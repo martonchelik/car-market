@@ -34,9 +34,8 @@ export default function SignInForm() {
         password: formData.password,
       });
 
-      // Вход с любыми учетными данными теперь всегда успешен, но на всякий случай оставляем проверку на ошибки
       if (result?.error) {
-        setError('Произошла ошибка при входе. Пожалуйста, попробуйте снова.');
+        setError('Неверный email или пароль. Пожалуйста, попробуйте снова.');
         setIsLoading(false);
         return;
       }
@@ -145,10 +144,13 @@ export default function SignInForm() {
         </Button>
       </form>
 
-      <div className="mt-4 text-center">
-        <a href="#" className="text-sm text-primary hover:underline">
+      <div className="mt-4 text-center space-y-2">
+        <a href="#" className="text-sm text-primary hover:underline block">
           Забыли пароль?
         </a>
+        <div className="text-sm">
+          Нет аккаунта? <a href="/auth/register" className="text-primary hover:underline">Зарегистрироваться</a>
+        </div>
       </div>
     </div>
   );

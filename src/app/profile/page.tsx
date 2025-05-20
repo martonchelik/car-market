@@ -15,12 +15,12 @@ export const metadata: Metadata = {
   description: 'Управление личным кабинетом, сохраненными поисками и избранными объявлениями на av.by',
 };
 
-// Add custom session type that includes id
 interface SessionUser {
   id: string;
   name?: string | null;
   email?: string | null;
   image?: string | null;
+  acctype?: string;
 }
 
 export default async function ProfilePage() {
@@ -30,21 +30,62 @@ export default async function ProfilePage() {
     redirect('/auth/signin');
   }
 
-  // Cast user to SessionUser type with ID
   const user = session.user as SessionUser;
 
   const savedSearches = getSavedSearchesByUserId(user.id);
   const favorites = getFavoritesByUserId(user.id);
 
   // Get full car listings for favorites
-  const favoriteCars = favorites.map(favorite => {
-    const car = carListings.find(car => car.id === favorite.carId);
-    if (!car) return null;
-    return {
-      ...car,
-      addedAt: favorite.addedAt,
-    };
-  }).filter(Boolean);
+  const favoriteCars = favorites
+    .map(favorite => {
+      const car = carListings.find(car => car.id === favorite.carId);
+      if (!car) return null;
+      return {
+        ...car,
+        addedAt: favorite.addedAt,
+      };
+    })
+    .filter(Boolean as any);
+
+  // Для демонстрации добавляем моковые объявления пользователя
+  const userCars = [
+    {
+      id: 1,
+      carbrand: "Audi",
+      modelname: "A8",
+      prodyear: 2019,
+      engvol: 2.0,
+      price: 24000,
+      milage: 44000,
+      active: true,
+      new: false,
+      enginetype: "Бензин",
+      bodytype: "Седан",
+      gb: "Автомат",
+      drivetype: "Полный",
+      color: "Черный",
+      date_added: new Date("2023-01-15").toISOString(),
+      images: [{ url: "/images/car-placeholder.svg", main: true }]
+    },
+    {
+      id: 2,
+      carbrand: "BMW",
+      modelname: "X5",
+      prodyear: 2020,
+      engvol: 3.0,
+      price: 45000,
+      milage: 35000,
+      active: true,
+      new: false,
+      enginetype: "Дизель",
+      bodytype: "Внедорожник",
+      gb: "Автомат",
+      drivetype: "Полный",
+      color: "Белый",
+      date_added: new Date("2023-03-10").toISOString(),
+      images: [{ url: "/images/car-placeholder.svg", main: true }]
+    }
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -66,16 +107,23 @@ export default async function ProfilePage() {
                 </div>
 
                 <div>
-                  <h1 className="text-2xl font-medium font-heading">{user.name}</h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-medium font-heading">{user.name}</h1>
+                    {user.acctype === 'admin' && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
+                        Администратор
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray text-sm">{user.email}</p>
                 </div>
               </div>
             </div>
 
-            {/* Profile tabs */}
             <ProfileTabs
               savedSearches={savedSearches}
               favorites={favoriteCars}
+              userCars={userCars}
             />
           </div>
         </div>

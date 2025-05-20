@@ -97,6 +97,6 @@ export interface SearchFilters {
   yearTo?: number;
   engineType?: number;
   bodyType?: number;
-  transmission?: number; // Коробка передач
+  gearbox?: number; // Коробка передач
   driveType?: number; // Тип привода
 }

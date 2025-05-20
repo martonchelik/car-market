@@ -135,9 +135,9 @@ export async function getFilteredCars(filters: SearchFilters): Promise<CarListin
       values.push(filters.bodyType);
     }
 
-    if (filters.transmission) {
+    if (filters.gearbox) {
       queryParts.push(`AND a.gearbox = ?`);
-      values.push(filters.transmission);
+      values.push(filters.gearbox);
     }
 
     if (filters.driveType) {

@@ -1,5 +1,22 @@
 import { CarListingView } from "@/types";
 
+// Интерфейсы для сохраненных поисков и избранных объявлений
+interface SavedSearch {
+  id: string;
+  userId: string;
+  name: string;
+  query: string;
+  filters: Record<string, string>;
+  createdAt: Date;
+}
+
+interface Favorite {
+  id: string;
+  userId: string;
+  carId: string;
+  addedAt: Date;
+}
+
 // Placeholder image path
 const CAR_PLACEHOLDER_IMAGE = 'public/images/car-placeholder.svg';
 
@@ -156,4 +173,56 @@ export async function getFilteredCars(filters: any): Promise<CarListingView[]> {
 
     return match;
   });
+}
+
+// Моковые данные для сохраненных поисков
+const mockSavedSearches: SavedSearch[] = [
+  {
+    id: "1",
+    userId: "1",
+    name: "Audi не старше 2019",
+    query: "?brand=Audi&yearFrom=2019",
+    filters: {
+      brand: "Audi",
+      yearFrom: "2019"
+    },
+    createdAt: new Date("2023-04-15")
+  },
+  {
+    id: "2",
+    userId: "1",
+    name: "Дизельные BMW",
+    query: "?brand=BMW&engineType=Diesel",
+    filters: {
+      brand: "BMW",
+      engineType: "Diesel"
+    },
+    createdAt: new Date("2023-05-10")
+  }
+];
+
+// Моковые данные для избранных объявлений
+const mockFavorites: Favorite[] = [
+  {
+    id: "1",
+    userId: "1",
+    carId: "1",
+    addedAt: new Date("2023-06-20")
+  },
+  {
+    id: "2",
+    userId: "1",
+    carId: "4",
+    addedAt: new Date("2023-06-25")
+  }
+];
+
+// Функция для получения сохраненных поисков пользователя
+export function getSavedSearchesByUserId(userId: string): SavedSearch[] {
+  return mockSavedSearches.filter(search => search.userId === userId);
+}
+
+// Функция для получения избранных объявлений пользователя
+export function getFavoritesByUserId(userId: string): Favorite[] {
+  return mockFavorites.filter(fav => fav.userId === userId);
 }

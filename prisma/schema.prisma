@@ -1,0 +1,155 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Модель пользователя
+model User {
+  id                 Int            @id @default(autoincrement()) @map("idu")
+  name               String
+  email              String         @unique
+  phone              String
+  regdate            DateTime       @default(now())
+  acctype            String         @default("user") // "user" или "admin" для master-аккаунта
+  password           String
+  foreignkey         String?        // Для совместимости с существующей схемой
+  active             Boolean        @default(true)   // Флаг активности аккаунта
+  image              String?        // Для отображения аватара
+
+  // Связи
+  cars               Car[]          // Объявления пользователя
+  favorites          Favorite[]     // Избранные объявления
+  savedSearches      SavedSearch[]  // Сохраненные поиски
+
+  @@map("users")
+}
+
+// Модель автомобиля (объявление)
+model Car {
+  id             Int       @id @default(autoincrement()) @map("idads")
+  model          String    // ID модели
+  prodyear       Int
+  engvol         Float
+  price          Int
+  milage         Int
+  active         Boolean   @default(true)
+  new            Boolean   @default(false)
+  owner          Int
+  engtype        Int       // ID типа двигателя
+  body           Int       // ID типа кузова
+  gearbox        Int       // ID типа коробки передач
+  transmission   Int       // ID типа привода
+  color          Int       // ID цвета
+  made           Int       // ID марки автомобиля
+  date_added     DateTime  @default(now())
+  description    String?   @db.Text
+  images         CarImage[]
+
+  // Связи
+  user           User      @relation(fields: [owner], references: [id], onDelete: Cascade)
+  inFavorites    Favorite[]
+
+  @@map("ads")
+}
+
+// Модель изображения автомобиля
+model CarImage {
+  id             Int       @id @default(autoincrement())
+  car_id         Int
+  url            String
+  main           Boolean   @default(false)
+  created_at     DateTime  @default(now())
+
+  // Связи
+  car            Car       @relation(fields: [car_id], references: [id], onDelete: Cascade)
+
+  @@map("car_images")
+}
+
+// Модель сохраненных поисков
+model SavedSearch {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  name           String
+  filters        String    @db.Text  // JSON строка с параметрами фильтрации
+  query_string   String    // Строка запроса URL
+  created_at     DateTime  @default(now())
+
+  // Связи
+  user           User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("saved_searches")
+}
+
+// Модель избранных объявлений
+model Favorite {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  car_id         Int
+  created_at     DateTime  @default(now())
+
+  // Связи
+  user           User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  car            Car       @relation(fields: [car_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, car_id])
+  @@map("favorites")
+}
+
+// Существующие справочные таблицы
+model CarBrand {
+  id             Int       @id @default(autoincrement()) @map("idcb")
+  name           String    @map("carbrand")
+
+  @@map("carbrands")
+}
+
+model Model {
+  id             Int       @id @default(autoincrement()) @map("idmodels")
+  modelbrand     Int
+  name           String    @map("modelname")
+
+  @@map("models")
+}
+
+model BodyType {
+  id             Int       @id @default(autoincrement()) @map("idbt")
+  name           String    @map("bodytype")
+
+  @@map("bodytypes")
+}
+
+model EngineType {
+  id             Int       @id @default(autoincrement()) @map("idet")
+  name           String    @map("enginetype")
+
+  @@map("enginetypes")
+}
+
+model GearBox {
+  id             Int       @id @default(autoincrement()) @map("idgb")
+  name           String    @map("gb")
+
+  @@map("gearboxes")
+}
+
+model Transmission {
+  id             Int       @id @default(autoincrement()) @map("idtm")
+  name           String    @map("drivetype")
+
+  @@map("transmissions")
+}
+
+model Color {
+  id             Int       @id @default(autoincrement()) @map("idc")
+  name           String    @map("color")
+
+  @@map("colors")
+}

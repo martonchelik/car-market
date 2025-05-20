@@ -5,26 +5,8 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { compare } from 'bcrypt';
 import prisma from '@/lib/prisma';
 
-// Mock users database for demonstration purposes
-// In a real application, this would be in your database
-const USERS = [
-  {
-    id: '1',
-    name: 'Демо Пользователь',
-    email: 'demo@example.com',
-    password: '$2b$10$ThiFTcmVxdkCJgNHl0EY3uIkFWOPDFpj5JOv3h2XxlpL4Tf9p2OMC', // "password123"
-    image: 'https://ui-avatars.com/api/?name=Демо+Пользователь&background=2ab4ac&color=fff'
-  },
-  {
-    id: '2',
-    name: 'Иван Иванов',
-    email: 'ivan@example.com',
-    password: '$2b$10$ThiFTcmVxdkCJgNHl0EY3uIkFWOPDFpj5JOv3h2XxlpL4Tf9p2OMC', // "password123"
-    image: 'https://ui-avatars.com/api/?name=Иван+Иванов&background=2ab4ac&color=fff'
-  },
-];
-
 export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: '/auth/signin',
@@ -47,33 +29,68 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // Allow any email and password
-        // Generate a fake user based on the provided email
-        const userName = credentials.email.split('@')[0];
+        try {
+          // Ищем пользователя в базе данных
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          });
 
-        return {
-          id: Math.random().toString(36).substr(2, 9), // Generate random ID
-          name: userName.charAt(0).toUpperCase() + userName.slice(1), // Capitalize first letter
-          email: credentials.email,
-          image: `https://ui-avatars.com/api/?name=${userName}&background=2ab4ac&color=fff`
-        };
+          // Если пользователь не найден или неактивен
+          if (!user || !user.active) {
+            return null;
+          }
+
+          // Проверяем пароль
+          const passwordMatches = await compare(credentials.password, user.password);
+          if (!passwordMatches) {
+            return null;
+          }
+
+          // Возвращаем данные пользователя без пароля
+          return {
+            id: user.id.toString(),
+            name: user.name,
+            email: user.email,
+            image: user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=2ab4ac&color=fff`,
+            acctype: user.acctype
+          };
+        } catch (error) {
+          console.error('Ошибка при авторизации:', error);
+          return null;
+        }
       }
     }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || 'dummy-client-id',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy-client-secret',
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+          phone: "0", // Значение по умолчанию
+          acctype: "user", // Обычный пользователь по умолчанию
+          password: "", // Пустой пароль для OAuth пользователей
+          foreignkey: "1", // Значение по умолчанию
+        };
+      }
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      // Добавляем данные пользователя в токен при входе
       if (user) {
         token.id = user.id;
+        token.acctype = user.acctype;
       }
       return token;
     },
     async session({ session, token }) {
+      // Добавляем данные пользователя в сессию
       if (token && session.user) {
         session.user.id = token.id as string;
+        session.user.acctype = token.acctype as string;
       }
       return session;
     },
