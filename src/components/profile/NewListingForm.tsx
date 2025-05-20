@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'react-hot-toast';
 import { CarBrand, Model, BodyType, EngineType, GearBox, Transmission, Color } from '@/types';
 
-export function NewListingForm() {
+// Используем только экспорт по умолчанию
+export default function NewListingForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(true);
