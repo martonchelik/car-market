@@ -6,9 +6,40 @@ import { FeaturedCars } from '@/components/FeaturedCars';
 import { NewsSection } from '@/components/NewsSection';
 import { NewsSidebar } from '@/components/NewsSidebar';
 import { Footer } from '@/components/Footer';
-import { carListings } from '@/data/carListings';
+import { getAllCars } from '@/lib/carService';
+import { formatCarListingForDisplay } from '@/lib/utils';
+// Import hardcoded data as fallback
+import { carListings as fallbackCarListings } from '@/data/carListings';
 
-export default function Home() {
+export default async function Home() {
+  // Default to fallback data
+  let carListings = fallbackCarListings;
+
+  try {
+    // Try to fetch car listings from the database
+    const carListingsData = await getAllCars();
+
+    // Only process if we have valid data
+    if (carListingsData && Array.isArray(carListingsData) && carListingsData.length > 0) {
+      // Format data for display and filter out any null results
+      const formattedListings = carListingsData
+        .map(car => formatCarListingForDisplay(car))
+        .filter(car => car !== null);
+
+      // Only replace fallback if we have valid formatted data
+      if (formattedListings && formattedListings.length > 0) {
+        carListings = formattedListings;
+      } else {
+        console.log("Failed to format car listings, using fallback data");
+      }
+    } else {
+      console.log("No car listings found in database, using fallback data");
+    }
+  } catch (error) {
+    // If database connection fails, use fallback data
+    console.error("Error fetching car listings from database:", error);
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -21,6 +52,8 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
+              {/* FeaturedCars is now an async component */}
+              {/* @ts-expect-error Async Server Component */}
               <FeaturedCars />
 
               <div className="mb-8" id="catalog">

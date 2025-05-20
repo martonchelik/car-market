@@ -326,7 +326,7 @@ export default function CarsPage() {
                   id={car.idads.toString()}
                   title={`${car.carbrand} ${car.modelname}`}
                   year={car.prodyear}
-                  imageUrl={car.imageUrl || 'https://ext.same-assets.com/1085385641/1248550479.jpg'}
+                  imageUrl={car.imageUrl || 'public/images/car-placeholder.svg'}
                   engineType={car.enginetype}
                   engineVolume={car.engvol.toString()}
                   transmission={car.gb}

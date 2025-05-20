@@ -1,127 +1,166 @@
 import { executeQuery } from './db';
 import { CarListing, CarListingView, SearchFilters } from '@/types';
+import * as mockDb from './mockDb';
+
+// Flag to track if we should use mock data
+let useMockData = false;
 
 // Получить все автомобили с подробной информацией
 export async function getAllCars(): Promise<CarListingView[]> {
-  const query = `
-    SELECT a.idads, m.modelname, cb.carbrand, a.prodyear, a.engvol, a.price, a.milage,
-           a.active, a.new, a.owner, et.enginetype, bt.bodytype,
-           gb.gb, tm.drivetype, c.color
-    FROM ads a
-    JOIN models m ON a.model = m.idmodels
-    JOIN carbrands cb ON m.modelbrand = cb.idcb
-    JOIN enginetypes et ON a.engtype = et.idet
-    JOIN bodytypes bt ON a.body = bt.idbt
-    JOIN gearboxes gb ON a.gearbox = gb.idgb
-    JOIN transmissions tm ON a.transmission = tm.idtm
-    JOIN colors c ON a.color = c.idc
-    WHERE a.active = 1
-    ORDER BY a.idads DESC
-  `;
+  if (useMockData) {
+    return mockDb.getAllCars();
+  }
 
-  return executeQuery(query) as Promise<CarListingView[]>;
+  try {
+    const query = `
+      SELECT a.idads, m.modelname, cb.carbrand, a.prodyear, a.engvol, a.price, a.milage,
+             a.active, a.new, a.owner, et.enginetype, bt.bodytype,
+             gb.gb, tm.drivetype, c.color
+      FROM ads a
+      JOIN models m ON a.model = m.idmodels
+      JOIN carbrands cb ON m.modelbrand = cb.idcb
+      JOIN enginetypes et ON a.engtype = et.idet
+      JOIN bodytypes bt ON a.body = bt.idbt
+      JOIN gearboxes gb ON a.gearbox = gb.idgb
+      JOIN transmissions tm ON a.transmission = tm.idtm
+      JOIN colors c ON a.color = c.idc
+      WHERE a.active = 1
+      ORDER BY a.idads DESC
+    `;
+
+    const result = await executeQuery(query) as CarListingView[];
+    return result;
+  } catch (error) {
+    console.error("Database connection failed:", error);
+    // Switch to mock data for this session
+    useMockData = true;
+    return mockDb.getAllCars();
+  }
 }
 
 // Получить автомобиль по ID
 export async function getCarById(id: number): Promise<CarListingView | null> {
-  const query = `
-    SELECT a.idads, m.modelname, cb.carbrand, a.prodyear, a.engvol, a.price, a.milage,
-           a.active, a.new, a.owner, et.enginetype, bt.bodytype,
-           gb.gb, tm.drivetype, c.color
-    FROM ads a
-    JOIN models m ON a.model = m.idmodels
-    JOIN carbrands cb ON m.modelbrand = cb.idcb
-    JOIN enginetypes et ON a.engtype = et.idet
-    JOIN bodytypes bt ON a.body = bt.idbt
-    JOIN gearboxes gb ON a.gearbox = gb.idgb
-    JOIN transmissions tm ON a.transmission = tm.idtm
-    JOIN colors c ON a.color = c.idc
-    WHERE a.idads = ? AND a.active = 1
-  `;
+  if (useMockData) {
+    return mockDb.getCarById(id);
+  }
 
-  const cars = await executeQuery(query, [id]) as CarListingView[];
-  return cars.length > 0 ? cars[0] : null;
+  try {
+    const query = `
+      SELECT a.idads, m.modelname, cb.carbrand, a.prodyear, a.engvol, a.price, a.milage,
+             a.active, a.new, a.owner, et.enginetype, bt.bodytype,
+             gb.gb, tm.drivetype, c.color
+      FROM ads a
+      JOIN models m ON a.model = m.idmodels
+      JOIN carbrands cb ON m.modelbrand = cb.idcb
+      JOIN enginetypes et ON a.engtype = et.idet
+      JOIN bodytypes bt ON a.body = bt.idbt
+      JOIN gearboxes gb ON a.gearbox = gb.idgb
+      JOIN transmissions tm ON a.transmission = tm.idtm
+      JOIN colors c ON a.color = c.idc
+      WHERE a.idads = ? AND a.active = 1
+    `;
+
+    const cars = await executeQuery(query, [id]) as CarListingView[];
+    return cars.length > 0 ? cars[0] : null;
+  } catch (error) {
+    console.error("Database connection failed:", error);
+    // Switch to mock data for this session
+    useMockData = true;
+    return mockDb.getCarById(id);
+  }
 }
 
 // Получить автомобили по фильтрам
 export async function getFilteredCars(filters: SearchFilters): Promise<CarListingView[]> {
-  let queryParts = [
-    `SELECT a.idads, m.modelname, cb.carbrand, a.prodyear, a.engvol, a.price, a.milage,
-            a.active, a.new, a.owner, et.enginetype, bt.bodytype,
-            gb.gb, tm.drivetype, c.color
-     FROM ads a
-     JOIN models m ON a.model = m.idmodels
-     JOIN carbrands cb ON m.modelbrand = cb.idcb
-     JOIN enginetypes et ON a.engtype = et.idet
-     JOIN bodytypes bt ON a.body = bt.idbt
-     JOIN gearboxes gb ON a.gearbox = gb.idgb
-     JOIN transmissions tm ON a.transmission = tm.idtm
-     JOIN colors c ON a.color = c.idc
-     WHERE a.active = 1`
-  ];
-
-  const values: any[] = [];
-
-  // Добавляем условия фильтрации
-  if (filters.brand) {
-    queryParts.push(`AND cb.idcb = ?`);
-    values.push(filters.brand);
+  if (useMockData) {
+    return mockDb.getFilteredCars(filters);
   }
 
-  if (filters.model) {
-    queryParts.push(`AND m.idmodels = ?`);
-    values.push(filters.model);
+  try {
+    let queryParts = [
+      `SELECT a.idads, m.modelname, cb.carbrand, a.prodyear, a.engvol, a.price, a.milage,
+              a.active, a.new, a.owner, et.enginetype, bt.bodytype,
+              gb.gb, tm.drivetype, c.color
+       FROM ads a
+       JOIN models m ON a.model = m.idmodels
+       JOIN carbrands cb ON m.modelbrand = cb.idcb
+       JOIN enginetypes et ON a.engtype = et.idet
+       JOIN bodytypes bt ON a.body = bt.idbt
+       JOIN gearboxes gb ON a.gearbox = gb.idgb
+       JOIN transmissions tm ON a.transmission = tm.idtm
+       JOIN colors c ON a.color = c.idc
+       WHERE a.active = 1`
+    ];
+
+    const values: any[] = [];
+
+    // Добавляем условия фильтрации
+    if (filters.brand) {
+      queryParts.push(`AND cb.idcb = ?`);
+      values.push(filters.brand);
+    }
+
+    if (filters.model) {
+      queryParts.push(`AND m.idmodels = ?`);
+      values.push(filters.model);
+    }
+
+    if (filters.priceFrom) {
+      queryParts.push(`AND a.price >= ?`);
+      values.push(filters.priceFrom);
+    }
+
+    if (filters.priceTo) {
+      queryParts.push(`AND a.price <= ?`);
+      values.push(filters.priceTo);
+    }
+
+    if (filters.yearFrom) {
+      queryParts.push(`AND a.prodyear >= ?`);
+      values.push(filters.yearFrom);
+    }
+
+    if (filters.yearTo) {
+      queryParts.push(`AND a.prodyear <= ?`);
+      values.push(filters.yearTo);
+    }
+
+    if (filters.engineType) {
+      queryParts.push(`AND a.engtype = ?`);
+      values.push(filters.engineType);
+    }
+
+    if (filters.bodyType) {
+      queryParts.push(`AND a.body = ?`);
+      values.push(filters.bodyType);
+    }
+
+    if (filters.transmission) {
+      queryParts.push(`AND a.gearbox = ?`);
+      values.push(filters.transmission);
+    }
+
+    if (filters.driveType) {
+      queryParts.push(`AND a.transmission = ?`);
+      values.push(filters.driveType);
+    }
+
+    // Добавляем сортировку
+    queryParts.push(`ORDER BY a.idads DESC`);
+
+    // Собираем запрос
+    const query = queryParts.join(' ');
+
+    return executeQuery(query, values) as Promise<CarListingView[]>;
+  } catch (error) {
+    console.error("Database connection failed:", error);
+    // Switch to mock data for this session
+    useMockData = true;
+    return mockDb.getFilteredCars(filters);
   }
-
-  if (filters.priceFrom) {
-    queryParts.push(`AND a.price >= ?`);
-    values.push(filters.priceFrom);
-  }
-
-  if (filters.priceTo) {
-    queryParts.push(`AND a.price <= ?`);
-    values.push(filters.priceTo);
-  }
-
-  if (filters.yearFrom) {
-    queryParts.push(`AND a.prodyear >= ?`);
-    values.push(filters.yearFrom);
-  }
-
-  if (filters.yearTo) {
-    queryParts.push(`AND a.prodyear <= ?`);
-    values.push(filters.yearTo);
-  }
-
-  if (filters.engineType) {
-    queryParts.push(`AND a.engtype = ?`);
-    values.push(filters.engineType);
-  }
-
-  if (filters.bodyType) {
-    queryParts.push(`AND a.body = ?`);
-    values.push(filters.bodyType);
-  }
-
-  if (filters.transmission) {
-    queryParts.push(`AND a.gearbox = ?`);
-    values.push(filters.transmission);
-  }
-
-  if (filters.driveType) {
-    queryParts.push(`AND a.transmission = ?`);
-    values.push(filters.driveType);
-  }
-
-  // Добавляем сортировку
-  queryParts.push(`ORDER BY a.idads DESC`);
-
-  // Собираем запрос
-  const query = queryParts.join(' ');
-
-  return executeQuery(query, values) as Promise<CarListingView[]>;
 }
 
+// The rest of the functions remain the same
 // Создать новое объявление
 export async function createCar(car: CarListing): Promise<number> {
   const query = `

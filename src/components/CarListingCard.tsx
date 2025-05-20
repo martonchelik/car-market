@@ -23,6 +23,37 @@ interface CarListingCardProps {
   vinChecked?: boolean;
 }
 
+// Car placeholder component as a simple SVG
+const CarPlaceholder = () => (
+  <div className="w-full h-full flex items-center justify-center bg-gray-100">
+    <svg
+      width="120"
+      height="80"
+      viewBox="0 0 120 80"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="text-gray-400"
+    >
+      <path
+        d="M105 50h10v10h-10zM5 50h10v10H5z"
+        fill="currentColor"
+      />
+      <path
+        d="M100 30H20l-15 20h110L100 30z"
+        fill="currentColor"
+      />
+      <path
+        d="M100 60H20v-10h80v10zM35 40H25l5-10h10l-5 10zM95 40H85l-5-10h10l5 10z"
+        fill="currentColor"
+      />
+      <path
+        d="M75 55H45v-5h30v5z"
+        fill="white"
+      />
+    </svg>
+  </div>
+);
+
 export function CarListingCard({
   id,
   title,
@@ -38,17 +69,24 @@ export function CarListingCard({
   verified = false,
   vinChecked = false,
 }: CarListingCardProps) {
+  // Check if the imageUrl is empty, null, or references the placeholder
+  const isPlaceholder = !imageUrl || imageUrl === 'public/images/car-placeholder.svg';
+
   return (
     <div className="car-card mb-4">
       <div className="flex flex-col md:flex-row">
         {/* Car Image */}
         <Link href={`/cars/${id}`} className="relative w-full md:w-64 h-48 overflow-hidden block">
-          <Image
-            src={imageUrl}
-            alt={title}
-            fill
-            className="object-cover"
-          />
+          {isPlaceholder ? (
+            <CarPlaceholder />
+          ) : (
+            <Image
+              src={imageUrl}
+              alt={title}
+              fill
+              className="object-cover"
+            />
+          )}
           {verified && (
             <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
               Проверено
