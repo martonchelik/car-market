@@ -1,90 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { getSavedSearchesByUserId, addSavedSearch, removeSavedSearch } from '@/lib/mockDb';
+import { getUserSavedSearches, saveSearch, deleteSavedSearch } from '@/lib/userService';
 
+// Получение сохраненных поисков пользователя
 export async function GET() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const userId = session.user.id;
-  const searches = getSavedSearchesByUserId(userId);
-
-  return NextResponse.json({ searches });
-}
-
-export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: 'Необходима авторизация' }, { status: 401 });
   }
 
   try {
-    const body = await request.json();
-    const { name, filters, notifyOnNew = false } = body;
+    const userId = parseInt(session.user.id);
+    const savedSearches = await getUserSavedSearches(userId);
 
-    if (!name || !filters) {
-      return NextResponse.json(
-        { error: 'Name and filters are required' },
-        { status: 400 }
-      );
-    }
-
-    const userId = session.user.id;
-    const newSearch = addSavedSearch({
-      userId,
-      name,
-      filters,
-      notifyOnNew
-    });
-
-    return NextResponse.json({ search: newSearch });
+    return NextResponse.json(savedSearches);
   } catch (error) {
+    console.error('Ошибка при получении сохраненных поисков:', error);
     return NextResponse.json(
-      { error: 'Invalid request data' },
-      { status: 400 }
+      { error: 'Не удалось получить сохраненные поиски' },
+      { status: 500 }
     );
   }
 }
 
-export async function DELETE(request: NextRequest) {
+// Сохранение нового поиска
+export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: 'Необходима авторизация' }, { status: 401 });
   }
 
   try {
-    const { searchParams } = request.nextUrl;
-    const searchUrl = searchParams.get('searchUrl');
-    const searchId = searchUrl?.split('/')?.pop();
+    const { name, filters, queryString } = await req.json();
+
+    if (!name || !queryString) {
+      return NextResponse.json({ error: 'Не указаны необходимые параметры' }, { status: 400 });
+    }
+
+    const userId = parseInt(session.user.id);
+    const savedSearch = await saveSearch(userId, name, filters || {}, queryString);
+
+    return NextResponse.json({ success: true, savedSearch }, { status: 201 });
+  } catch (error) {
+    console.error('Ошибка при сохранении поиска:', error);
+    return NextResponse.json(
+      { error: 'Не удалось сохранить поиск' },
+      { status: 500 }
+    );
+  }
+}
+
+// Удаление сохраненного поиска
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    return NextResponse.json({ error: 'Необходима авторизация' }, { status: 401 });
+  }
+
+  try {
+    const url = new URL(req.url);
+    const searchId = url.searchParams.get('id');
 
     if (!searchId) {
-      return NextResponse.json(
-        { error: 'Search ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Не указан ID сохраненного поиска' }, { status: 400 });
     }
 
-    const userId = session.user.id;
-    const removed = removeSavedSearch(userId, searchId);
-
-    if (!removed) {
-      return NextResponse.json(
-        { error: 'Search not found or not owned by user' },
-        { status: 404 }
-      );
-    }
+    const userId = parseInt(session.user.id);
+    await deleteSavedSearch(parseInt(searchId), userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Ошибка при удалении сохраненного поиска:', error);
     return NextResponse.json(
-      { error: 'Invalid request' },
-      { status: 400 }
+      { error: 'Не удалось удалить сохраненный поиск' },
+      { status: 500 }
     );
   }
 }

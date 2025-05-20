@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma';
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  debug: process.env.NODE_ENV !== 'production',
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: '/auth/signin',
@@ -37,12 +38,14 @@ export const authOptions: NextAuthOptions = {
 
           // Если пользователь не найден или неактивен
           if (!user || !user.active) {
+            console.log('Пользователь не найден или неактивен:', credentials.email);
             return null;
           }
 
           // Проверяем пароль
           const passwordMatches = await compare(credentials.password, user.password);
           if (!passwordMatches) {
+            console.log('Неверный пароль для пользователя:', credentials.email);
             return null;
           }
 
@@ -61,8 +64,8 @@ export const authOptions: NextAuthOptions = {
       }
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || 'dummy-client-id',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy-client-secret',
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       profile(profile) {
         return {
           id: profile.sub,

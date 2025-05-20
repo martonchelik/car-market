@@ -71,6 +71,12 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
+      console.log('Отправка данных для регистрации:', {
+        ...formData,
+        password: '***',
+        confirmPassword: '***'
+      });
+
       // Отправляем запрос на регистрацию
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -84,13 +90,26 @@ export function RegisterForm() {
       });
 
       const data = await response.json();
+      console.log('Ответ от сервера:', { status: response.status, ok: response.ok });
 
       if (!response.ok) {
-        throw new Error(data.error || 'Ошибка при регистрации');
+        console.error('Ошибка ответа сервера:', data);
+
+        // Обрабатываем конкретные ошибки
+        if (response.status === 409) {
+          throw new Error('Пользователь с таким email уже существует');
+        } else if (response.status === 400) {
+          throw new Error(data.error || 'Некорректные данные для регистрации');
+        } else if (response.status === 503) {
+          throw new Error('Сервис временно недоступен. Пожалуйста, попробуйте позже');
+        } else {
+          throw new Error(data.error || 'Ошибка при регистрации');
+        }
       }
 
       // Успешная регистрация
       toast.success('Регистрация успешна! Выполняется вход...');
+      console.log('Регистрация успешна, выполняем автоматический вход');
 
       // Автоматический вход после регистрации
       const signInResult = await signIn('credentials', {
@@ -99,14 +118,18 @@ export function RegisterForm() {
         redirect: false
       });
 
+      console.log('Результат входа:', { error: signInResult?.error });
+
       if (signInResult?.error) {
+        console.error('Ошибка при автоматическом входе:', signInResult.error);
         toast.error('Не удалось выполнить вход. Пожалуйста, войдите вручную.');
         router.push('/auth/signin');
       } else {
         // Перенаправление на главную страницу
+        console.log('Автоматический вход успешен, перенаправление на главную страницу');
         router.push('/');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка при регистрации:', error);
       toast.error(error.message || 'Ошибка при регистрации');
     } finally {

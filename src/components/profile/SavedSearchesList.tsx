@@ -1,177 +1,155 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/Badge';
-import { Bell, BellOff, Search, Trash2, PlusCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import { Search, Trash2, ExternalLink, Bell, BellOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface SavedSearch {
-  id: string;
+  id: number;
   name: string;
-  filters: Record<string, unknown>;
-  createdAt: string;
-  notifyOnNew: boolean;
+  query_string: string;
+  filters: string;
+  created_at: string;
 }
 
 interface SavedSearchesListProps {
-  searches: SavedSearch[];
+  initialSearches?: SavedSearch[];
 }
 
-export default function SavedSearchesList({ searches }: SavedSearchesListProps) {
-  const [savedSearches, setSavedSearches] = useState(searches);
+export default function SavedSearchesList({ initialSearches = [] }: SavedSearchesListProps) {
+  const [searches, setSearches] = useState<SavedSearch[]>(initialSearches);
+  const [isLoading, setIsLoading] = useState(initialSearches.length === 0);
+  const [removingId, setRemovingId] = useState<number | null>(null);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(date);
-  };
-
-  const formatFilters = (filters: Record<string, unknown>) => {
-    const parts = [];
-
-    if (filters.make) {
-      parts.push(String(filters.make));
+  useEffect(() => {
+    if (initialSearches.length === 0) {
+      fetchSavedSearches();
     }
+  }, [initialSearches]);
 
-    if (filters.priceFrom || filters.priceTo) {
-      const priceRange = [];
-      if (filters.priceFrom) priceRange.push(`от ${filters.priceFrom}$`);
-      if (filters.priceTo) priceRange.push(`до ${filters.priceTo}$`);
-      parts.push(priceRange.join(' '));
-    }
-
-    if (filters.yearFrom || filters.yearTo) {
-      const yearRange = [];
-      if (filters.yearFrom) yearRange.push(`от ${filters.yearFrom} г.`);
-      if (filters.yearTo) yearRange.push(`до ${filters.yearTo} г.`);
-      parts.push(yearRange.join(' '));
-    }
-
-    if (filters.engineType) {
-      parts.push(String(filters.engineType));
-    }
-
-    return parts.join(', ');
-  };
-
-  const toggleNotifications = (id: string) => {
-    setSavedSearches(prev =>
-      prev.map(search =>
-        search.id === id
-          ? { ...search, notifyOnNew: !search.notifyOnNew }
-          : search
-      )
-    );
-  };
-
-  const deleteSearch = async (id: string) => {
-    // In a real app, you would call an API to delete the search
-    setSavedSearches(prev => prev.filter(search => search.id !== id));
-  };
-
-  const handleSearchClick = (filters: Record<string, unknown>) => {
-    // In a real app, this would navigate to the search results page with the filters applied
-    console.log('Search with filters:', filters);
-  };
-
-  const createQueryString = (filters: Record<string, unknown>) => {
-    const params = new URLSearchParams();
-
-    for (const [key, value] of Object.entries(filters)) {
-      if (value) {
-        params.append(key, String(value));
+  const fetchSavedSearches = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/user/saved-searches');
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить сохраненные поиски');
       }
+      const data = await response.json();
+      setSearches(data);
+    } catch (error) {
+      console.error('Ошибка при загрузке сохраненных поисков:', error);
+      toast.error('Не удалось загрузить сохраненные поиски');
+    } finally {
+      setIsLoading(false);
     }
-
-    return params.toString();
   };
+
+  const deleteSearch = async (searchId: number) => {
+    setRemovingId(searchId);
+    try {
+      const response = await fetch(`/api/user/saved-searches?id=${searchId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Не удалось удалить сохраненный поиск');
+      }
+
+      setSearches(prevSearches => prevSearches.filter(search => search.id !== searchId));
+      toast.success('Поиск удален');
+    } catch (error) {
+      console.error('Ошибка при удалении поиска:', error);
+      toast.error('Не удалось удалить сохраненный поиск');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="py-10 text-center">
+        <p className="text-gray-500">Загрузка сохраненных поисков...</p>
+      </div>
+    );
+  }
+
+  if (searches.length === 0) {
+    return (
+      <div className="py-10 text-center">
+        <Search className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+        <h3 className="text-lg font-medium mb-2">У вас пока нет сохраненных поисков</h3>
+        <p className="text-gray-500 mb-6">Сохраняйте результаты поиска, чтобы быстро возвращаться к ним</p>
+        <Link href="/cars">
+          <Button className="bg-primary hover:bg-primary/90">Начать поиск</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      {savedSearches.length === 0 ? (
-        <div className="text-center py-8">
-          <div className="text-gray mb-4">
-            У вас пока нет сохраненных поисков
-          </div>
-          <Button className="bg-primary hover:bg-primary/90">
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Создать поиск
-          </Button>
-        </div>
-      ) : (
-        <>
-          <div className="mb-4 flex justify-between items-center">
-            <h3 className="text-lg font-medium">Ваши сохраненные поиски</h3>
-            <Button className="bg-primary hover:bg-primary/90">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Создать поиск
-            </Button>
-          </div>
+    <div className="space-y-4">
+      {searches.map(search => {
+        // Попытка парсинга фильтров JSON
+        let filters = {};
+        try {
+          filters = JSON.parse(search.filters);
+        } catch (e) {
+          console.error('Ошибка при парсинге фильтров:', e);
+        }
 
-          <div className="space-y-4">
-            {savedSearches.map((search) => (
-              <div
-                key={search.id}
-                className="bg-gray-50 rounded-lg p-4 border border-gray-100"
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
-                  <div>
-                    <h4 className="font-medium">{search.name}</h4>
-                    <p className="text-sm text-gray">
-                      Создан {formatDate(search.createdAt)}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center mt-2 md:mt-0 space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleNotifications(search.id)}
-                      className={search.notifyOnNew ? 'text-primary' : 'text-gray'}
-                    >
-                      {search.notifyOnNew ? (
-                        <Bell className="h-4 w-4 mr-1" />
-                      ) : (
-                        <BellOff className="h-4 w-4 mr-1" />
-                      )}
-                      {search.notifyOnNew ? 'Уведомления вкл.' : 'Уведомления выкл.'}
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteSearch(search.id)}
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+        return (
+          <div key={search.id} className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex justify-between">
+              <div>
+                <div className="flex items-center">
+                  <Search className="h-5 w-5 text-gray-400 mr-2" />
+                  <h3 className="font-medium">{search.name}</h3>
                 </div>
 
-                <div className="bg-white p-3 rounded border border-gray-100 mb-3">
-                  <div className="text-sm">
-                    {formatFilters(search.filters)}
-                  </div>
-                </div>
+                <div className="mt-2 text-sm text-gray-600">
+                  <p>Сохранен: {new Date(search.created_at).toLocaleDateString()}</p>
 
-                <div className="flex justify-end">
-                  <Link
-                    href={`/cars?${createQueryString(search.filters)}`}
-                    className="bg-primary text-white hover:bg-primary/90 rounded-md px-4 py-2 text-sm flex items-center transition-colors"
-                  >
-                    <Search className="h-4 w-4 mr-2" />
-                    Показать результаты
-                  </Link>
+                  {/* Отображение основных параметров поиска если они есть */}
+                  {Object.keys(filters).length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {Object.entries(filters).map(([key, value]) => (
+                        value && <span key={key} className="px-2 py-0.5 bg-gray-100 rounded-full text-xs">
+                          {key}: {value}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                >
+                  <Link href={search.query_string}>
+                    <ExternalLink size={16} className="mr-1" /> Перейти
+                  </Link>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => deleteSearch(search.id)}
+                  disabled={removingId === search.id}
+                >
+                  <Trash2 size={16} className="mr-1" />
+                  {removingId === search.id ? 'Удаление...' : 'Удалить'}
+                </Button>
+              </div>
+            </div>
           </div>
-        </>
-      )}
+        );
+      })}
     </div>
   );
 }

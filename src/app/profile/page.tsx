@@ -4,15 +4,14 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getSavedSearchesByUserId, getFavoritesByUserId } from '@/lib/mockDb';
-import { carListings } from '@/data/carListings';
+import { getUserById, getUserCars, getUserFavorites, getUserSavedSearches } from '@/lib/userService';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 
 export const metadata: Metadata = {
-  title: 'Мой профиль | av.by',
-  description: 'Управление личным кабинетом, сохраненными поисками и избранными объявлениями на av.by',
+  title: 'Мой профиль | car-market',
+  description: 'Управление личным кабинетом, сохраненными поисками и избранными объявлениями',
 };
 
 interface SessionUser {
@@ -31,61 +30,13 @@ export default async function ProfilePage() {
   }
 
   const user = session.user as SessionUser;
+  const userId = parseInt(user.id);
 
-  const savedSearches = getSavedSearchesByUserId(user.id);
-  const favorites = getFavoritesByUserId(user.id);
-
-  // Get full car listings for favorites
-  const favoriteCars = favorites
-    .map(favorite => {
-      const car = carListings.find(car => car.id === favorite.carId);
-      if (!car) return null;
-      return {
-        ...car,
-        addedAt: favorite.addedAt,
-      };
-    })
-    .filter(Boolean as any);
-
-  // Для демонстрации добавляем моковые объявления пользователя
-  const userCars = [
-    {
-      id: 1,
-      carbrand: "Audi",
-      modelname: "A8",
-      prodyear: 2019,
-      engvol: 2.0,
-      price: 24000,
-      milage: 44000,
-      active: true,
-      new: false,
-      enginetype: "Бензин",
-      bodytype: "Седан",
-      gb: "Автомат",
-      drivetype: "Полный",
-      color: "Черный",
-      date_added: new Date("2023-01-15").toISOString(),
-      images: [{ url: "/images/car-placeholder.svg", main: true }]
-    },
-    {
-      id: 2,
-      carbrand: "BMW",
-      modelname: "X5",
-      prodyear: 2020,
-      engvol: 3.0,
-      price: 45000,
-      milage: 35000,
-      active: true,
-      new: false,
-      enginetype: "Дизель",
-      bodytype: "Внедорожник",
-      gb: "Автомат",
-      drivetype: "Полный",
-      color: "Белый",
-      date_added: new Date("2023-03-10").toISOString(),
-      images: [{ url: "/images/car-placeholder.svg", main: true }]
-    }
-  ];
+  // Получаем данные из базы данных
+  const userData = await getUserById(userId);
+  const userCars = await getUserCars(userId);
+  const favorites = await getUserFavorites(userId);
+  const savedSearches = await getUserSavedSearches(userId);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -122,7 +73,7 @@ export default async function ProfilePage() {
 
             <ProfileTabs
               savedSearches={savedSearches}
-              favorites={favoriteCars}
+              favorites={favorites}
               userCars={userCars}
             />
           </div>

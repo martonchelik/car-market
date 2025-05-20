@@ -19,35 +19,53 @@ interface LoginUserData {
 
 // Создание нового пользователя
 export async function createUser(userData: CreateUserData) {
-  // Проверяем, существует ли уже пользователь с таким email
-  const existingUser = await prisma.user.findUnique({
-    where: { email: userData.email }
-  });
+  console.log('Начало создания пользователя:', userData.email);
+  try {
+    // Проверяем, существует ли уже пользователь с таким email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: userData.email }
+    });
 
-  if (existingUser) {
-    throw new Error('Пользователь с таким email уже существует');
-  }
-
-  // Хешируем пароль
-  const hashedPassword = await hash(userData.password, SALT_ROUNDS);
-
-  // Создаем пользователя
-  const user = await prisma.user.create({
-    data: {
-      name: userData.name,
-      email: userData.email,
-      phone: userData.phone,
-      password: hashedPassword,
-      acctype: userData.acctype || 'user', // По умолчанию - обычный пользователь
-      foreignkey: '1',  // Заглушка для совместимости
-      regdate: new Date(),
-      image: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=2ab4ac&color=fff`
+    if (existingUser) {
+      console.log('Пользователь с таким email уже существует:', userData.email);
+      throw new Error('Пользователь с таким email уже существует');
     }
-  });
 
-  // Удаляем пароль из возвращаемых данных
-  const { password, ...userWithoutPassword } = user;
-  return userWithoutPassword;
+    console.log('Хеширование пароля для пользователя:', userData.email);
+    // Хешируем пароль
+    const hashedPassword = await hash(userData.password, SALT_ROUNDS);
+
+    console.log('Создание записи пользователя в базе данных:', userData.email);
+    // Создаем пользователя
+    const user = await prisma.user.create({
+      data: {
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        password: hashedPassword,
+        acctype: userData.acctype || 'user', // По умолчанию - обычный пользователь
+        foreignkey: '1',  // Заглушка для совместимости
+        regdate: new Date(),
+        image: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=2ab4ac&color=fff`
+      }
+    });
+
+    console.log('Пользователь успешно создан:', userData.email);
+    // Удаляем пароль из возвращаемых данных
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error: any) {
+    console.error('Ошибка в функции createUser:', error);
+    // Проверяем ошибки уникальности Prisma
+    if (error.code === 'P2002') {
+      console.error('Нарушение уникальности поля:', error.meta?.target);
+      if (error.meta?.target?.includes('email')) {
+        throw new Error('Пользователь с таким email уже существует');
+      }
+    }
+    // Пробрасываем исходную ошибку дальше
+    throw error;
+  }
 }
 
 // Авторизация пользователя
@@ -151,7 +169,7 @@ export async function addToFavorites(userId: number, carId: number) {
       }
     });
     return favorite;
-  } catch (error) {
+  } catch (error: any) {
     // Возможно, этот автомобиль уже добавлен в избранное
     if (error.code === 'P2002') {
       throw new Error('Этот автомобиль уже в избранном');
