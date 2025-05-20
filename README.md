@@ -1,36 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Car Market
 
-## Getting Started
+Онлайн-платформа для продажи автомобилей с возможностью поиска и фильтрации по разным параметрам.
 
-First, run the development server:
+## Технологии
+
+- Next.js 15
+- TypeScript
+- MySQL (для хранения данных об автомобилях)
+- Tailwind CSS (для стилизации)
+- ShadCN UI (компоненты интерфейса)
+
+## Особенности
+
+- Просмотр автомобилей с фильтрацией
+- Создание новых объявлений
+- Сохранение поисковых запросов
+- Фильтрация по различным параметрам (марка, модель, цена, год, тип кузова, тип двигателя и т.д.)
+
+## Установка и запуск
+
+### Требования
+
+- Node.js 18+ или Bun
+- MySQL 8+ (или аналог MariaDB)
+
+### Настройка базы данных
+
+1. Создайте базу данных MySQL:
+
+```bash
+mysql -u root -p
+```
+
+2. Импортируйте схему из файла `sql/schema.sql`:
+
+```bash
+mysql -u root -p < sql/schema.sql
+```
+
+### Настройка .env файла
+
+Создайте файл `.env` в корне проекта и укажите параметры подключения к базе данных:
+
+```
+# Настройки MySQL
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=ваш_пароль
+MYSQL_DATABASE=cbby
+
+# Настройки приложения
+NEXTAUTH_SECRET=ваш_секретный_ключ
+NEXTAUTH_URL=http://localhost:3000
+```
+
+### Установка зависимостей
+
+Используя Bun:
+
+```bash
+bun install
+```
+
+или NPM:
+
+```bash
+npm install
+```
+
+### Запуск приложения в режиме разработки
+
+```bash
+bun run dev
+```
+
+или
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Приложение будет доступно по адресу: [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Структура проекта
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/src/app` — Страницы и API маршруты
+- `/src/components` — React компоненты
+- `/src/lib` — Утилиты и сервисные функции
+- `/src/types` — TypeScript типы и интерфейсы
+- `/sql` — SQL скрипты для настройки базы данных
 
-## Learn More
+## API Endpoints
 
-To learn more about Next.js, take a look at the following resources:
+### Объявления
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `GET /api/cars` — получить список всех объявлений или отфильтрованных по параметрам
+- `GET /api/cars/:id` — получить объявление по ID
+- `POST /api/cars` — создать новое объявление
+- `DELETE /api/cars/:id` — удалить объявление (меняет active на 0)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Справочники
 
-## Deploy on Vercel
+- `GET /api/reference/all` — получить все справочники (марки, модели, типы двигателей и т.д.)
+- `GET /api/reference/brands` — получить список марок автомобилей
+- `GET /api/reference/models?brandId=:id` — получить список моделей для указанной марки
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Функциональность поиска
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Поиск автомобилей можно выполнять по следующим параметрам:
+
+- Марка и модель автомобиля
+- Ценовой диапазон
+- Год выпуска
+- Тип двигателя
+- Тип кузова
+- Коробка передач (КПП)
+- Тип привода
+
+При выборе параметров в форме поиска на главной странице, происходит перенаправление на страницу `/cars` с соответствующими параметрами в URL. На странице отображаются примененные фильтры, которые можно удалять по одному или сбросить все сразу.
+
+## Добавление объявлений
+
+Для добавления нового объявления:
+
+1. Перейдите на страницу `/profile/new-listing`
+2. Заполните все обязательные поля формы
+3. Нажмите "Создать объявление"
+
+После успешного создания объявления вы будете перенаправлены на страницу списка автомобилей.
+
+## Дополнительная информация
+
+- Для оптимизации шрифтов используется [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) и [Geist](https://vercel.com/font).
+- Для аутентификации используется NextAuth.js (см. переменные окружения выше).
+- Для деплоя рекомендуется использовать [Vercel](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
+
+## Полезные ссылки
+
+- [Документация Next.js](https://nextjs.org/docs)
+- [Документация Tailwind CSS](https://tailwindcss.com/docs)
+- [Документация ShadCN UI](https://ui.shadcn.com/docs)
+- [Документация NextAuth.js](https://next-auth.js.org/getting-started/introduction)

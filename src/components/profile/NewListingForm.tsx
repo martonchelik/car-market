@@ -1,717 +1,475 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Camera, Upload, Plus, X, Check, ChevronDown, Search } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { CarBrand, Model, BodyType, EngineType, GearBox, Transmission, Color } from '@/types';
 
-// Определяем интерфейсы
-interface CarListing {
-  make: string;
-  model: string;
-  generation: string;
-  bodyType: string;
-  driveType: string;
-  engineType: string;
-  year: string;
-  mileage: string;
-  price: string;
-  engine: string;
-  transmission: string;
-  color: string;
-  description: string;
-  images: string[];
-}
-
-// Справочные данные для выпадающих списков
-const carMakes = [
-  'Audi', 'BMW', 'Chevrolet', 'Citroen', 'Ford', 'Honda',
-  'Hyundai', 'Kia', 'Lexus', 'Mazda', 'Mercedes-Benz', 'Mitsubishi',
-  'Nissan', 'Opel', 'Peugeot', 'Renault', 'Skoda', 'Toyota',
-  'Volkswagen', 'Volvo'
-];
-
-const transmissionTypes = [
-  'Автоматическая', 'Механическая', 'Роботизированная', 'Вариатор'
-];
-
-const bodyTypes = [
-  'Седан', 'Хэтчбек', 'Универсал', 'Внедорожник', 'Кроссовер',
-  'Купе', 'Кабриолет', 'Минивэн', 'Пикап', 'Фургон', 'Лимузин'
-];
-
-const driveTypes = [
-  'Передний', 'Задний', 'Полный'
-];
-
-const engineTypes = [
-  'Бензин', 'Дизель', 'Газ/Бензин', 'Гибрид', 'Электро', 'Газ'
-];
-
-// Модели автомобилей для разных марок
-const carModels: Record<string, string[]> = {
-  'Audi': ['A1', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'Q3', 'Q5', 'Q7', 'Q8', 'e-tron', 'TT', 'R8'],
-  'BMW': ['1 серия', '2 серия', '3 серия', '4 серия', '5 серия', '6 серия', '7 серия', 'X1', 'X3', 'X5', 'X6', 'X7', 'Z4', 'i3', 'i8'],
-  'Volkswagen': ['Polo', 'Golf', 'Jetta', 'Passat', 'Arteon', 'Tiguan', 'Touareg', 'T-Roc', 'T-Cross', 'Caddy', 'Transporter', 'Multivan'],
-  'Toyota': ['Corolla', 'Camry', 'RAV4', 'Land Cruiser', 'Land Cruiser Prado', 'Highlander', 'C-HR', 'Yaris', 'Prius', 'Hilux', 'Alphard'],
-  'Mercedes-Benz': ['A-класс', 'B-класс', 'C-класс', 'E-класс', 'S-класс', 'GLA', 'GLC', 'GLE', 'GLS', 'CLA', 'CLS', 'AMG GT'],
-  // Другие марки могут быть добавлены по аналогии
-};
-
-// Поколения для некоторых моделей
-const carGenerations: Record<string, Record<string, string[]>> = {
-  'Audi': {
-    'A4': ['B5 (1994-2001)', 'B6 (2000-2006)', 'B7 (2004-2008)', 'B8 (2007-2015)', 'B9 (2015-настоящее время)'],
-    'A6': ['C4 (1994-1997)', 'C5 (1997-2004)', 'C6 (2004-2011)', 'C7 (2011-2018)', 'C8 (2018-настоящее время)'],
-  },
-  'BMW': {
-    '3 серия': ['E36 (1990-2000)', 'E46 (1998-2006)', 'E90/E91/E92/E93 (2005-2013)', 'F30/F31/F34 (2012-2019)', 'G20 (2018-настоящее время)'],
-    '5 серия': ['E34 (1988-1996)', 'E39 (1995-2003)', 'E60/E61 (2003-2010)', 'F10/F11 (2010-2017)', 'G30 (2017-настоящее время)'],
-  },
-  // Другие марки и модели могут быть добавлены по аналогии
-};
-
-export default function NewListingForm() {
+export function NewListingForm() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [images, setImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(true);
 
-  // Добавляем состояния для выпадающих списков
-  const [showMakeOptions, setShowMakeOptions] = useState(false);
-  const [showModelOptions, setShowModelOptions] = useState(false);
-  const [showTransmissionOptions, setShowTransmissionOptions] = useState(false);
-  const [showBodyTypeOptions, setShowBodyTypeOptions] = useState(false);
-  const [showDriveTypeOptions, setShowDriveTypeOptions] = useState(false);
-  const [showEngineTypeOptions, setShowEngineTypeOptions] = useState(false);
-  const [showGenerationOptions, setShowGenerationOptions] = useState(false);
+  // Состояния для справочников
+  const [brands, setBrands] = useState<CarBrand[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
+  const [engineTypes, setEngineTypes] = useState<EngineType[]>([]);
+  const [bodyTypes, setBodyTypes] = useState<BodyType[]>([]);
+  const [gearBoxes, setGearBoxes] = useState<GearBox[]>([]);
+  const [driveTypes, setDriveTypes] = useState<Transmission[]>([]);
+  const [colors, setColors] = useState<Color[]>([]);
 
-  // Фильтрация опций
-  const [filteredMakes, setFilteredMakes] = useState(carMakes);
-  const [filteredModels, setFilteredModels] = useState<string[]>([]);
-  const [filteredGenerations, setFilteredGenerations] = useState<string[]>([]);
-
-  // Ссылки на элементы dropdown для закрытия при клике вне
-  const makeDropdownRef = useRef<HTMLDivElement>(null);
-  const modelDropdownRef = useRef<HTMLDivElement>(null);
-  const transmissionDropdownRef = useRef<HTMLDivElement>(null);
-  const bodyTypeDropdownRef = useRef<HTMLDivElement>(null);
-  const driveTypeDropdownRef = useRef<HTMLDivElement>(null);
-  const engineTypeDropdownRef = useRef<HTMLDivElement>(null);
-  const generationDropdownRef = useRef<HTMLDivElement>(null);
-
-  const [formData, setFormData] = useState<CarListing>({
-    make: '',
+  // Состояние формы
+  const [formData, setFormData] = useState({
+    made: '',
     model: '',
-    generation: '',
-    bodyType: '',
-    driveType: '',
-    engineType: '',
-    year: '',
-    mileage: '',
-    price: '',
-    engine: '',
+    prodyear: new Date().getFullYear().toString(),
+    engvol: '1.0',
+    price: '0',
+    milage: '0',
+    engtype: '',
+    body: '',
+    gearbox: '',
     transmission: '',
     color: '',
-    description: '',
-    images: [],
+    imageUrl: '',
   });
 
-  // Обработчик кликов вне элементов dropdown
+  // Загрузка справочных данных при первом рендере
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (makeDropdownRef.current && !makeDropdownRef.current.contains(event.target as Node)) {
-        setShowMakeOptions(false);
-      }
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
-        setShowModelOptions(false);
-      }
-      if (transmissionDropdownRef.current && !transmissionDropdownRef.current.contains(event.target as Node)) {
-        setShowTransmissionOptions(false);
-      }
-      if (bodyTypeDropdownRef.current && !bodyTypeDropdownRef.current.contains(event.target as Node)) {
-        setShowBodyTypeOptions(false);
-      }
-      if (driveTypeDropdownRef.current && !driveTypeDropdownRef.current.contains(event.target as Node)) {
-        setShowDriveTypeOptions(false);
-      }
-      if (engineTypeDropdownRef.current && !engineTypeDropdownRef.current.contains(event.target as Node)) {
-        setShowEngineTypeOptions(false);
-      }
-      if (generationDropdownRef.current && !generationDropdownRef.current.contains(event.target as Node)) {
-        setShowGenerationOptions(false);
-      }
-    }
+    const fetchReferenceData = async () => {
+      try {
+        const response = await fetch('/api/reference/all');
+        if (!response.ok) throw new Error('Failed to fetch reference data');
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+        const data = await response.json();
+        setBrands(data.brands);
+        setEngineTypes(data.engineTypes);
+        setBodyTypes(data.bodyTypes);
+        setGearBoxes(data.gearBoxes);
+        setDriveTypes(data.driveTypes);
+        setColors(data.colors);
+
+        // Устанавливаем начальные значения для селектов (первый элемент из списка)
+        if (data.brands.length > 0) setFormData(prev => ({ ...prev, made: data.brands[0].idcb.toString() }));
+        if (data.engineTypes.length > 0) setFormData(prev => ({ ...prev, engtype: data.engineTypes[0].idet.toString() }));
+        if (data.bodyTypes.length > 0) setFormData(prev => ({ ...prev, body: data.bodyTypes[0].idbt.toString() }));
+        if (data.gearBoxes.length > 0) setFormData(prev => ({ ...prev, gearbox: data.gearBoxes[0].idgb.toString() }));
+        if (data.driveTypes.length > 0) setFormData(prev => ({ ...prev, transmission: data.driveTypes[0].idtm.toString() }));
+        if (data.colors.length > 0) setFormData(prev => ({ ...prev, color: data.colors[0].idc.toString() }));
+
+        setFormLoading(false);
+      } catch (error) {
+        console.error('Error fetching reference data:', error);
+        toast.error('Не удалось загрузить справочные данные');
+        setFormLoading(false);
+      }
     };
+
+    fetchReferenceData();
   }, []);
 
-  // Обновляем доступные модели при изменении марки
+  // Загрузка моделей при выборе бренда
   useEffect(() => {
-    if (formData.make && carModels[formData.make]) {
-      setFilteredModels(carModels[formData.make]);
-    } else {
-      setFilteredModels([]);
-    }
-  }, [formData.make]);
+    if (formData.made) {
+      const fetchModels = async () => {
+        try {
+          const response = await fetch(`/api/reference/models?brandId=${formData.made}`);
+          if (!response.ok) throw new Error('Failed to fetch models');
 
-  // Обновляем доступные поколения при изменении марки и модели
-  useEffect(() => {
-    if (formData.make && formData.model) {
-      const generations = carGenerations[formData.make]?.[formData.model] || [];
-      setFilteredGenerations(generations);
-    } else {
-      setFilteredGenerations([]);
-    }
-  }, [formData.make, formData.model]);
+          const data = await response.json();
+          setModels(data);
 
-  // Обработчик изменения полей формы
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+          // Если есть хотя бы одна модель, выбираем первую
+          if (data.length > 0) {
+            setFormData(prev => ({ ...prev, model: data[0].idmodels.toString() }));
+          }
+        } catch (error) {
+          console.error('Error fetching models:', error);
+          toast.error('Не удалось загрузить модели автомобилей');
+        }
+      };
+
+      fetchModels();
+    } else {
+      setModels([]);
+    }
+  }, [formData.made]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-
-    // Обновляем фильтрованные списки в зависимости от ввода
-    if (name === 'make') {
-      setFilteredMakes(
-        carMakes.filter(make =>
-          make.toLowerCase().includes(value.toLowerCase())
-        )
-      );
-    }
   };
 
-  // Обработчики выбора значений из выпадающих списков
-  const handleSelectMake = (make: string) => {
-    setFormData(prev => ({ ...prev, make, model: '', generation: '' }));
-    setShowMakeOptions(false);
-  };
-
-  const handleSelectModel = (model: string) => {
-    setFormData(prev => ({ ...prev, model, generation: '' }));
-    setShowModelOptions(false);
-  };
-
-  const handleSelectTransmission = (transmission: string) => {
-    setFormData(prev => ({ ...prev, transmission }));
-    setShowTransmissionOptions(false);
-  };
-
-  const handleSelectBodyType = (bodyType: string) => {
-    setFormData(prev => ({ ...prev, bodyType }));
-    setShowBodyTypeOptions(false);
-  };
-
-  const handleSelectDriveType = (driveType: string) => {
-    setFormData(prev => ({ ...prev, driveType }));
-    setShowDriveTypeOptions(false);
-  };
-
-  const handleSelectEngineType = (engineType: string) => {
-    setFormData(prev => ({ ...prev, engineType }));
-    setShowEngineTypeOptions(false);
-  };
-
-  const handleSelectGeneration = (generation: string) => {
-    setFormData(prev => ({ ...prev, generation }));
-    setShowGenerationOptions(false);
-  };
-
-  // Обработчик добавления изображения (имитация)
-  const handleAddImage = () => {
-    // В реальном приложении здесь была бы загрузка изображения
-    // Для демонстрации добавляем случайные изображения автомобилей
-    const demoImages = [
-      'https://static.am.by/photos/vw/polo/polo-2020-450.jpg',
-      'https://static.am.by/photos/audi/a4/a4-2020-450.jpg',
-      'https://static.am.by/photos/bmw/3/3-2021-450.jpg',
-      'https://static.am.by/photos/toyota/camry/camry-2021-450.jpg',
-      'https://static.am.by/photos/mercedes/e/e-2020-450.jpg',
-    ];
-
-    const randomImage = demoImages[Math.floor(Math.random() * demoImages.length)];
-    if (!images.includes(randomImage)) {
-      setImages(prev => [...prev, randomImage]);
-      setFormData(prev => ({ ...prev, images: [...prev.images, randomImage] }));
-    }
-  };
-
-  // Обработчик удаления изображения
-  const handleRemoveImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Обработчик отправки формы
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
+
+    // Валидация формы
+    if (
+      !formData.model ||
+      !formData.made ||
+      !formData.engtype ||
+      !formData.body ||
+      !formData.gearbox ||
+      !formData.transmission ||
+      !formData.color
+    ) {
+      toast.error('Пожалуйста, заполните все обязательные поля');
+      return;
+    }
+
+    // Валидация числовых полей
+    const price = Number(formData.price);
+    const prodyear = Number(formData.prodyear);
+    const milage = Number(formData.milage);
+    const engvol = Number(formData.engvol.replace(',', '.'));
+
+    if (isNaN(price) || price <= 0) {
+      toast.error('Укажите корректную цену');
+      return;
+    }
+
+    if (isNaN(prodyear) || prodyear < 1900 || prodyear > new Date().getFullYear()) {
+      toast.error('Укажите корректный год выпуска');
+      return;
+    }
+
+    if (isNaN(milage) || milage < 0) {
+      toast.error('Укажите корректный пробег');
+      return;
+    }
+
+    if (isNaN(engvol) || engvol <= 0) {
+      toast.error('Укажите корректный объем двигателя');
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      // Имитация отправки данных на сервер
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Формируем данные для отправки
+      const carData = {
+        model: formData.model,
+        prodyear: prodyear,
+        engvol: engvol,
+        price: price,
+        milage: milage,
+        active: true,
+        new: false,
+        owner: 1, // В реальном приложении здесь должен быть ID текущего пользователя
+        engtype: Number(formData.engtype),
+        body: Number(formData.body),
+        gearbox: Number(formData.gearbox),
+        transmission: Number(formData.transmission),
+        color: Number(formData.color),
+        made: Number(formData.made)
+      };
 
-      // Успешно
-      setSuccess(true);
-      setIsSubmitting(false);
+      // Отправляем запрос
+      const response = await fetch('/api/cars', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(carData),
+      });
 
-      // Перенаправление на страницу профиля через 2 секунды
-      setTimeout(() => {
-        router.push('/profile');
-        router.refresh();
-      }, 2000);
-    } catch (err) {
-      setError('Произошла ошибка при создании объявления');
-      setIsSubmitting(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка при создании объявления');
+      }
+
+      const result = await response.json();
+
+      toast.success('Объявление успешно создано!');
+
+      // Перенаправляем на страницу объявлений
+      router.push('/cars');
+    } catch (error: any) {
+      console.error('Error creating listing:', error);
+      toast.error(error.message || 'Не удалось создать объявление');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Компонент отображения формы
+  if (formLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6 animate-pulse space-y-4">
+        <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-10 bg-gray-200 rounded w-full"></div>
+          </div>
+        ))}
+        <div className="h-10 bg-gray-200 rounded w-1/3 mt-4"></div>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {success ? (
-        <div className="bg-green-50 p-6 rounded-md text-center">
-          <div className="text-green-600 text-xl font-medium mb-2">Объявление успешно создано!</div>
-          <p className="text-green-600">Сейчас вы будете перенаправлены в личный кабинет.</p>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="bg-red-50 p-4 rounded-md text-red-600 text-sm">
-              {error}
-            </div>
-          )}
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <h1 className="text-2xl font-medium mb-6">Создать новое объявление</h1>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Марка автомобиля - с автозаполнением */}
-            <div className="relative" ref={makeDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Марка автомобиля*
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  name="make"
-                  value={formData.make}
-                  onChange={handleChange}
-                  onClick={() => setShowMakeOptions(true)}
-                  placeholder="Например: Audi, BMW, Volkswagen"
-                  className="pr-10"
-                  required
-                />
-                <ChevronDown
-                  className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 cursor-pointer"
-                  onClick={() => setShowMakeOptions(!showMakeOptions)}
-                />
-              </div>
-
-              {showMakeOptions && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
-                  {filteredMakes.length > 0 ? (
-                    filteredMakes.map((make) => (
-                      <div
-                        key={make}
-                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
-                        onClick={() => handleSelectMake(make)}
-                      >
-                        {make === formData.make && <Check className="h-4 w-4 mr-2 text-green-500" />}
-                        {make}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-4 py-2 text-sm text-gray-400">Нет совпадений</div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Модель - с автозаполнением */}
-            <div className="relative" ref={modelDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Модель*
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  name="model"
-                  value={formData.model}
-                  onChange={handleChange}
-                  onClick={() => formData.make && setShowModelOptions(true)}
-                  placeholder="Сначала выберите марку"
-                  className="pr-10"
-                  disabled={!formData.make}
-                  required
-                />
-                <ChevronDown
-                  className={`absolute right-3 top-2.5 h-5 w-5 ${!formData.make ? 'text-gray-300' : 'text-gray-400 cursor-pointer'}`}
-                  onClick={() => formData.make && setShowModelOptions(!showModelOptions)}
-                />
-              </div>
-
-              {showModelOptions && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
-                  {filteredModels.length > 0 ? (
-                    filteredModels.map((model) => (
-                      <div
-                        key={model}
-                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
-                        onClick={() => handleSelectModel(model)}
-                      >
-                        {model === formData.model && <Check className="h-4 w-4 mr-2 text-green-500" />}
-                        {model}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-4 py-2 text-sm text-gray-400">Нет моделей для выбранной марки</div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Поколение - с автозаполнением */}
-            <div className="relative" ref={generationDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Поколение
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  name="generation"
-                  value={formData.generation}
-                  onChange={handleChange}
-                  onClick={() => formData.model && setShowGenerationOptions(true)}
-                  placeholder={!formData.make ? "Сначала выберите марку" : !formData.model ? "Сначала выберите модель" : "Выберите поколение"}
-                  className="pr-10"
-                  disabled={!formData.model}
-                />
-                <ChevronDown
-                  className={`absolute right-3 top-2.5 h-5 w-5 ${!formData.model ? 'text-gray-300' : 'text-gray-400 cursor-pointer'}`}
-                  onClick={() => formData.model && setShowGenerationOptions(!showGenerationOptions)}
-                />
-              </div>
-
-              {showGenerationOptions && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
-                  {filteredGenerations.length > 0 ? (
-                    filteredGenerations.map((generation) => (
-                      <div
-                        key={generation}
-                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
-                        onClick={() => handleSelectGeneration(generation)}
-                      >
-                        {generation === formData.generation && <Check className="h-4 w-4 mr-2 text-green-500" />}
-                        {generation}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-4 py-2 text-sm text-gray-400">Нет данных о поколениях</div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Тип кузова - с автозаполнением */}
-            <div className="relative" ref={bodyTypeDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тип кузова*
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  name="bodyType"
-                  value={formData.bodyType}
-                  onChange={handleChange}
-                  onClick={() => setShowBodyTypeOptions(true)}
-                  placeholder="Например: Седан, Хэтчбек"
-                  className="pr-10"
-                  required
-                />
-                <ChevronDown
-                  className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 cursor-pointer"
-                  onClick={() => setShowBodyTypeOptions(!showBodyTypeOptions)}
-                />
-              </div>
-
-              {showBodyTypeOptions && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
-                  {bodyTypes.map((type) => (
-                    <div
-                      key={type}
-                      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
-                      onClick={() => handleSelectBodyType(type)}
-                    >
-                      {type === formData.bodyType && <Check className="h-4 w-4 mr-2 text-green-500" />}
-                      {type}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Тип привода - с автозаполнением */}
-            <div className="relative" ref={driveTypeDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тип привода*
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  name="driveType"
-                  value={formData.driveType}
-                  onChange={handleChange}
-                  onClick={() => setShowDriveTypeOptions(true)}
-                  placeholder="Например: Передний, Задний"
-                  className="pr-10"
-                  required
-                />
-                <ChevronDown
-                  className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 cursor-pointer"
-                  onClick={() => setShowDriveTypeOptions(!showDriveTypeOptions)}
-                />
-              </div>
-
-              {showDriveTypeOptions && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
-                  {driveTypes.map((type) => (
-                    <div
-                      key={type}
-                      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
-                      onClick={() => handleSelectDriveType(type)}
-                    >
-                      {type === formData.driveType && <Check className="h-4 w-4 mr-2 text-green-500" />}
-                      {type}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Тип двигателя - с автозаполнением */}
-            <div className="relative" ref={engineTypeDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тип двигателя*
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  name="engineType"
-                  value={formData.engineType}
-                  onChange={handleChange}
-                  onClick={() => setShowEngineTypeOptions(true)}
-                  placeholder="Например: Бензин, Дизель"
-                  className="pr-10"
-                  required
-                />
-                <ChevronDown
-                  className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 cursor-pointer"
-                  onClick={() => setShowEngineTypeOptions(!showEngineTypeOptions)}
-                />
-              </div>
-
-              {showEngineTypeOptions && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
-                  {engineTypes.map((type) => (
-                    <div
-                      key={type}
-                      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
-                      onClick={() => handleSelectEngineType(type)}
-                    >
-                      {type === formData.engineType && <Check className="h-4 w-4 mr-2 text-green-500" />}
-                      {type}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Год выпуска */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Год выпуска*
-              </label>
-              <Input
-                type="text"
-                name="year"
-                value={formData.year}
-                onChange={handleChange}
-                placeholder="Например: 2018"
-                required
-              />
-            </div>
-
-            {/* Пробег */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Пробег (км)*
-              </label>
-              <Input
-                type="text"
-                name="mileage"
-                value={formData.mileage}
-                onChange={handleChange}
-                placeholder="Например: 75000"
-                required
-              />
-            </div>
-
-            {/* Цена */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Цена (BYN)*
-              </label>
-              <Input
-                type="text"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                placeholder="Например: 25000"
-                required
-              />
-            </div>
-
-            {/* Объем двигателя */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Объем двигателя
-              </label>
-              <Input
-                type="text"
-                name="engine"
-                value={formData.engine}
-                onChange={handleChange}
-                placeholder="Например: 2.0 л"
-              />
-            </div>
-
-            {/* Коробка передач - с автозаполнением */}
-            <div className="relative" ref={transmissionDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Коробка передач*
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  name="transmission"
-                  value={formData.transmission}
-                  onChange={handleChange}
-                  onClick={() => setShowTransmissionOptions(true)}
-                  placeholder="Например: Автомат, Механика"
-                  className="pr-10"
-                  required
-                />
-                <ChevronDown
-                  className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 cursor-pointer"
-                  onClick={() => setShowTransmissionOptions(!showTransmissionOptions)}
-                />
-              </div>
-
-              {showTransmissionOptions && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
-                  {transmissionTypes.map((type) => (
-                    <div
-                      key={type}
-                      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
-                      onClick={() => handleSelectTransmission(type)}
-                    >
-                      {type === formData.transmission && <Check className="h-4 w-4 mr-2 text-green-500" />}
-                      {type}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Цвет */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Цвет
-              </label>
-              <Input
-                type="text"
-                name="color"
-                value={formData.color}
-                onChange={handleChange}
-                placeholder="Например: Черный, Серебристый"
-              />
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Марка автомобиля */}
+          <div>
+            <label htmlFor="made" className="block text-sm font-medium text-gray-700 mb-1">
+              Марка *
+            </label>
+            <select
+              id="made"
+              name="made"
+              value={formData.made}
+              onChange={handleInputChange}
+              className="w-full border rounded-md h-10 px-3"
+              required
+            >
+              <option value="">Выберите марку</option>
+              {brands.map(brand => (
+                <option key={brand.idcb} value={brand.idcb}>
+                  {brand.carbrand}
+                </option>
+              ))}
+            </select>
           </div>
 
+          {/* Модель автомобиля */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Описание
+            <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-1">
+              Модель *
             </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows={4}
-              className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Опишите состояние автомобиля, дополнительное оборудование и другие важные детали"
+            <select
+              id="model"
+              name="model"
+              value={formData.model}
+              onChange={handleInputChange}
+              className="w-full border rounded-md h-10 px-3"
+              required
+              disabled={models.length === 0}
+            >
+              <option value="">Выберите модель</option>
+              {models.map(model => (
+                <option key={model.idmodels} value={model.idmodels}>
+                  {model.modelname}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Год выпуска */}
+          <div>
+            <label htmlFor="prodyear" className="block text-sm font-medium text-gray-700 mb-1">
+              Год выпуска *
+            </label>
+            <Input
+              id="prodyear"
+              name="prodyear"
+              type="number"
+              min="1900"
+              max={new Date().getFullYear()}
+              value={formData.prodyear}
+              onChange={handleInputChange}
+              required
             />
           </div>
 
+          {/* Цена */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Фотографии
+            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+              Цена (USD) *
             </label>
-
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
-              {images.map((image, index) => (
-                <div key={index} className="relative rounded-md overflow-hidden h-24 bg-gray-100">
-                  <Image
-                    src={image}
-                    alt={`Фото ${index + 1}`}
-                    width={150}
-                    height={96}
-                    className="object-cover w-full h-full"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-
-              {images.length < 10 && (
-                <button
-                  type="button"
-                  onClick={handleAddImage}
-                  className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-md hover:border-primary transition-colors"
-                >
-                  <Plus className="h-6 w-6 text-gray-400" />
-                  <span className="text-xs text-gray-500 mt-1">Добавить фото</span>
-                </button>
-              )}
-            </div>
-
-            <p className="text-xs text-gray-500">
-              Можно загрузить до 10 фотографий в формате JPG, PNG. Максимальный размер — 10 МБ.
-            </p>
+            <Input
+              id="price"
+              name="price"
+              type="number"
+              min="0"
+              value={formData.price}
+              onChange={handleInputChange}
+              required
+            />
           </div>
 
-          <div className="pt-4">
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90"
-              disabled={isSubmitting}
+          {/* Пробег */}
+          <div>
+            <label htmlFor="milage" className="block text-sm font-medium text-gray-700 mb-1">
+              Пробег (км) *
+            </label>
+            <Input
+              id="milage"
+              name="milage"
+              type="number"
+              min="0"
+              value={formData.milage}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          {/* Объем двигателя */}
+          <div>
+            <label htmlFor="engvol" className="block text-sm font-medium text-gray-700 mb-1">
+              Объем двигателя (л) *
+            </label>
+            <Input
+              id="engvol"
+              name="engvol"
+              type="text"
+              value={formData.engvol}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          {/* Тип двигателя */}
+          <div>
+            <label htmlFor="engtype" className="block text-sm font-medium text-gray-700 mb-1">
+              Тип двигателя *
+            </label>
+            <select
+              id="engtype"
+              name="engtype"
+              value={formData.engtype}
+              onChange={handleInputChange}
+              className="w-full border rounded-md h-10 px-3"
+              required
             >
-              {isSubmitting ? 'Создание объявления...' : 'Опубликовать объявление'}
-            </Button>
+              <option value="">Выберите тип двигателя</option>
+              {engineTypes.map(et => (
+                <option key={et.idet} value={et.idet}>
+                  {et.enginetype}
+                </option>
+              ))}
+            </select>
           </div>
-        </form>
-      )}
+
+          {/* Тип кузова */}
+          <div>
+            <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
+              Тип кузова *
+            </label>
+            <select
+              id="body"
+              name="body"
+              value={formData.body}
+              onChange={handleInputChange}
+              className="w-full border rounded-md h-10 px-3"
+              required
+            >
+              <option value="">Выберите тип кузова</option>
+              {bodyTypes.map(bt => (
+                <option key={bt.idbt} value={bt.idbt}>
+                  {bt.bodytype}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Коробка передач */}
+          <div>
+            <label htmlFor="gearbox" className="block text-sm font-medium text-gray-700 mb-1">
+              Коробка передач *
+            </label>
+            <select
+              id="gearbox"
+              name="gearbox"
+              value={formData.gearbox}
+              onChange={handleInputChange}
+              className="w-full border rounded-md h-10 px-3"
+              required
+            >
+              <option value="">Выберите КПП</option>
+              {gearBoxes.map(gb => (
+                <option key={gb.idgb} value={gb.idgb}>
+                  {gb.gb}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Тип привода */}
+          <div>
+            <label htmlFor="transmission" className="block text-sm font-medium text-gray-700 mb-1">
+              Привод *
+            </label>
+            <select
+              id="transmission"
+              name="transmission"
+              value={formData.transmission}
+              onChange={handleInputChange}
+              className="w-full border rounded-md h-10 px-3"
+              required
+            >
+              <option value="">Выберите тип привода</option>
+              {driveTypes.map(dt => (
+                <option key={dt.idtm} value={dt.idtm}>
+                  {dt.drivetype}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Цвет */}
+          <div>
+            <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-1">
+              Цвет *
+            </label>
+            <select
+              id="color"
+              name="color"
+              value={formData.color}
+              onChange={handleInputChange}
+              className="w-full border rounded-md h-10 px-3"
+              required
+            >
+              <option value="">Выберите цвет</option>
+              {colors.map(c => (
+                <option key={c.idc} value={c.idc}>
+                  {c.color}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* URL изображения */}
+          <div>
+            <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-1">
+              URL изображения
+            </label>
+            <Input
+              id="imageUrl"
+              name="imageUrl"
+              type="text"
+              value={formData.imageUrl}
+              onChange={handleInputChange}
+              placeholder="https://example.com/car-image.jpg"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            className="mr-2"
+            onClick={() => router.push('/cars')}
+            disabled={loading}
+          >
+            Отмена
+          </Button>
+          <Button
+            type="submit"
+            className="bg-primary text-white"
+            disabled={loading}
+          >
+            {loading ? 'Создание объявления...' : 'Создать объявление'}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

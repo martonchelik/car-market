@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Search } from 'lucide-react';
+import { CarBrand, Model, BodyType, EngineType, GearBox, Transmission } from '@/types';
 
 export function SearchForm() {
   const router = useRouter();
@@ -18,15 +19,73 @@ export function SearchForm() {
     yearTo: '',
     engineType: '',
     bodyType: '',
-    transmission: '',
+    gearbox: '',
     driveType: '',
   });
 
-  const handleFilterChange = (key, value) => {
+  // Состояния для справочных данных
+  const [brands, setBrands] = useState<CarBrand[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
+  const [engineTypes, setEngineTypes] = useState<EngineType[]>([]);
+  const [bodyTypes, setBodyTypes] = useState<BodyType[]>([]);
+  const [gearBoxes, setGearBoxes] = useState<GearBox[]>([]);
+  const [driveTypes, setDriveTypes] = useState<Transmission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Загрузка справочных данных при первом рендере
+  useEffect(() => {
+    const fetchReferenceData = async () => {
+      try {
+        const response = await fetch('/api/reference/all');
+        if (!response.ok) throw new Error('Failed to fetch reference data');
+
+        const data = await response.json();
+        setBrands(data.brands);
+        setEngineTypes(data.engineTypes);
+        setBodyTypes(data.bodyTypes);
+        setGearBoxes(data.gearBoxes);
+        setDriveTypes(data.driveTypes);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching reference data:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchReferenceData();
+  }, []);
+
+  // Загрузка моделей при выборе бренда
+  useEffect(() => {
+    if (filters.brand) {
+      const fetchModels = async () => {
+        try {
+          const response = await fetch(`/api/reference/models?brandId=${filters.brand}`);
+          if (!response.ok) throw new Error('Failed to fetch models');
+
+          const data = await response.json();
+          setModels(data);
+        } catch (error) {
+          console.error('Error fetching models:', error);
+        }
+      };
+
+      fetchModels();
+    } else {
+      setModels([]);
+    }
+  }, [filters.brand]);
+
+  const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+
+    // Если меняется бренд, сбрасываем модель
+    if (key === 'brand') {
+      setFilters((prev) => ({ ...prev, model: '' }));
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Построение строки запроса
@@ -43,6 +102,28 @@ export function SearchForm() {
     router.push(`/cars?${queryParams.toString()}`);
   };
 
+  // Если данные еще загружаются, показываем заглушку
+  if (loading) {
+    return (
+      <div className="bg-white p-4 rounded-lg shadow-sm mb-6 animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-10 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-10 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+        <div className="flex justify-end">
+          <div className="h-10 bg-gray-200 rounded w-48"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg shadow-sm mb-6">
       <div className="text-2xl font-medium font-heading mb-4">
@@ -53,62 +134,55 @@ export function SearchForm() {
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full border rounded-md h-10 px-3 text-left flex items-center justify-between">
-              <span>{filters.brand || 'Марка'}</span>
+              <span>
+                {filters.brand
+                  ? brands.find(b => b.idcb.toString() === filters.brand)?.carbrand || 'Марка'
+                  : 'Марка'
+                }
+              </span>
               <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-full">
-              <DropdownMenuItem onClick={() => handleFilterChange('brand', 'Audi')}>Audi</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('brand', 'BMW')}>BMW</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('brand', 'Mercedes-Benz')}>Mercedes-Benz</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('brand', 'Volkswagen')}>Volkswagen</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('brand', 'Toyota')}>Toyota</DropdownMenuItem>
+            <DropdownMenuContent align="start" className="w-full max-h-[300px] overflow-y-auto bg-white">
+              {brands.map((brand) => (
+                <DropdownMenuItem
+                  key={brand.idcb}
+                  onClick={() => handleFilterChange('brand', brand.idcb.toString())}
+                  className="hover:bg-gray-100"
+                >
+                  {brand.carbrand}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
         <div>
           <DropdownMenu>
-            <DropdownMenuTrigger className="w-full border rounded-md h-10 px-3 text-left flex items-center justify-between">
-              <span>{filters.model || 'Модель'}</span>
+            <DropdownMenuTrigger
+              className="w-full border rounded-md h-10 px-3 text-left flex items-center justify-between"
+              disabled={!filters.brand}
+            >
+              <span>
+                {filters.model
+                  ? models.find(m => m.idmodels.toString() === filters.model)?.modelname || 'Модель'
+                  : 'Модель'
+                }
+              </span>
               <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-full">
-              <DropdownMenuItem onClick={() => handleFilterChange('model', '')}>Все модели</DropdownMenuItem>
-              {filters.brand === 'Audi' && (
-                <>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'A4')}>A4</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'A6')}>A6</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'Q5')}>Q5</DropdownMenuItem>
-                </>
-              )}
-              {filters.brand === 'BMW' && (
-                <>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', '3 серия')}>3 серия</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', '5 серия')}>5 серия</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'X5')}>X5</DropdownMenuItem>
-                </>
-              )}
-              {filters.brand === 'Mercedes-Benz' && (
-                <>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'C-класс')}>C-класс</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'E-класс')}>E-класс</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'S-класс')}>S-класс</DropdownMenuItem>
-                </>
-              )}
-              {filters.brand === 'Volkswagen' && (
-                <>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'Golf')}>Golf</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'Passat')}>Passat</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'Multivan')}>Multivan</DropdownMenuItem>
-                </>
-              )}
-              {filters.brand === 'Toyota' && (
-                <>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'Camry')}>Camry</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'Corolla')}>Corolla</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleFilterChange('model', 'C-HR')}>C-HR</DropdownMenuItem>
-                </>
-              )}
+            <DropdownMenuContent align="start" className="w-full max-h-[300px] overflow-y-auto bg-white">
+              <DropdownMenuItem onClick={() => handleFilterChange('model', '')} className="hover:bg-gray-100">
+                Все модели
+              </DropdownMenuItem>
+              {models.map((model) => (
+                <DropdownMenuItem
+                  key={model.idmodels}
+                  onClick={() => handleFilterChange('model', model.idmodels.toString())}
+                  className="hover:bg-gray-100"
+                >
+                  {model.modelname}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -119,7 +193,7 @@ export function SearchForm() {
               <span>Цена от-до</span>
               <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-full">
+            <DropdownMenuContent align="start" className="w-full bg-white">
               <div className="p-2">
                 <div className="flex gap-2">
                   <Input
@@ -146,7 +220,7 @@ export function SearchForm() {
               <span>Год от-до</span>
               <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-full">
+            <DropdownMenuContent align="start" className="w-full bg-white">
               <div className="p-2">
                 <div className="flex gap-2">
                   <Input
@@ -172,14 +246,24 @@ export function SearchForm() {
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full border rounded-md h-10 px-3 text-left flex items-center justify-between">
-              <span>{filters.engineType || 'Двигатель'}</span>
+              <span>
+                {filters.engineType
+                  ? engineTypes.find(et => et.idet.toString() === filters.engineType)?.enginetype || 'Двигатель'
+                  : 'Двигатель'
+                }
+              </span>
               <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-full">
-              <DropdownMenuItem onClick={() => handleFilterChange('engineType', 'бензин')}>Бензин</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('engineType', 'дизель')}>Дизель</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('engineType', 'электро')}>Электро</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('engineType', 'гибрид')}>Гибрид</DropdownMenuItem>
+            <DropdownMenuContent align="start" className="w-full bg-white">
+              {engineTypes.map((et) => (
+                <DropdownMenuItem
+                  key={et.idet}
+                  onClick={() => handleFilterChange('engineType', et.idet.toString())}
+                  className="hover:bg-gray-100"
+                >
+                  {et.enginetype}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -187,14 +271,24 @@ export function SearchForm() {
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full border rounded-md h-10 px-3 text-left flex items-center justify-between">
-              <span>{filters.bodyType || 'Кузов'}</span>
+              <span>
+                {filters.bodyType
+                  ? bodyTypes.find(bt => bt.idbt.toString() === filters.bodyType)?.bodytype || 'Кузов'
+                  : 'Кузов'
+                }
+              </span>
               <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-full">
-              <DropdownMenuItem onClick={() => handleFilterChange('bodyType', 'седан')}>Седан</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('bodyType', 'универсал')}>Универсал</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('bodyType', 'хэтчбек')}>Хэтчбек</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('bodyType', 'внедорожник')}>Внедорожник</DropdownMenuItem>
+            <DropdownMenuContent align="start" className="w-full bg-white">
+              {bodyTypes.map((bt) => (
+                <DropdownMenuItem
+                  key={bt.idbt}
+                  onClick={() => handleFilterChange('bodyType', bt.idbt.toString())}
+                  className="hover:bg-gray-100"
+                >
+                  {bt.bodytype}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -202,13 +296,24 @@ export function SearchForm() {
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full border rounded-md h-10 px-3 text-left flex items-center justify-between">
-              <span>{filters.transmission || 'КПП'}</span>
+              <span>
+                {filters.gearbox
+                  ? gearBoxes.find(gb => gb.idgb.toString() === filters.gearbox)?.gb || 'КПП'
+                  : 'КПП'
+                }
+              </span>
               <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-full">
-              <DropdownMenuItem onClick={() => handleFilterChange('transmission', 'автомат')}>Автомат</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('transmission', 'механика')}>Механика</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('transmission', 'робот')}>Робот</DropdownMenuItem>
+            <DropdownMenuContent align="start" className="w-full bg-white">
+              {gearBoxes.map((gb) => (
+                <DropdownMenuItem
+                  key={gb.idgb}
+                  onClick={() => handleFilterChange('gearbox', gb.idgb.toString())}
+                  className="hover:bg-gray-100"
+                >
+                  {gb.gb}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -216,13 +321,24 @@ export function SearchForm() {
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full border rounded-md h-10 px-3 text-left flex items-center justify-between">
-              <span>{filters.driveType || 'Привод'}</span>
+              <span>
+                {filters.driveType
+                  ? driveTypes.find(dt => dt.idtm.toString() === filters.driveType)?.drivetype || 'Привод'
+                  : 'Привод'
+                }
+              </span>
               <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-full">
-              <DropdownMenuItem onClick={() => handleFilterChange('driveType', 'передний')}>Передний</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('driveType', 'задний')}>Задний</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFilterChange('driveType', 'полный')}>Полный</DropdownMenuItem>
+            <DropdownMenuContent align="start" className="w-full bg-white">
+              {driveTypes.map((dt) => (
+                <DropdownMenuItem
+                  key={dt.idtm}
+                  onClick={() => handleFilterChange('driveType', dt.idtm.toString())}
+                  className="hover:bg-gray-100"
+                >
+                  {dt.drivetype}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
