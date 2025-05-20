@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: var(--font-open-sans);
+  --font-heading: var(--font-montserrat);
+
+  /* av.by colors */
+  --color-primary: #2ab4ac;
+  --color-dark: #363b3f;
+  --color-light: #f1f4f7;
+  --color-gray: #8e979d;
+  --color-gray-light: #bec7d0;
+  --color-gray-dark: #505a63;
+  --color-brown: #895b4a;
+  --color-beige: #9a8560;
+
+  /* shadcn ui variables */
+  --primary: 174 56% 43%;
+  --primary-foreground: 0 0% 100%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 174 56% 43%;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-[#363b3f];
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-medium;
+  }
+}
+
+@layer components {
+  .container-av {
+    @apply container mx-auto px-4 max-w-[1200px];
+  }
+
+  .nav-link {
+    @apply text-sm font-medium hover:text-[#2ab4ac] transition-colors;
+  }
+
+  .car-card {
+    @apply bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow;
+  }
+
+  .card-title {
+    @apply text-lg font-medium text-[#363b3f];
+  }
+
+  .btn-primary {
+    @apply bg-[#2ab4ac] text-white hover:bg-[#239993] transition-colors px-4 py-2 rounded-md font-medium;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-[#363b3f] border border-[#bec7d0] hover:border-[#8e979d] transition-colors px-4 py-2 rounded-md;
+  }
+}
+
+/* Custom styling for scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gray-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray);
+}

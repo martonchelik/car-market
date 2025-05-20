@@ -1,0 +1,16 @@
+[images]
+  remote_images = [
+    "https://ext.same-assets.com/**",
+    "https://avcdn.av.by/**"
+  ]
+
+[build]
+  command = "bun run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "18" # Updated to Node.js 18.x
+  NPM_FLAGS = "--version" # Skip installing optional dependencies
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
