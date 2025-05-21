@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE INDEX `users_email_key`(`email`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- Add the ALTER TABLE statement to modify the password field in the users table if it exists
+ALTER TABLE `users` MODIFY COLUMN `password` VARCHAR(255) NOT NULL;
+
 CREATE TABLE IF NOT EXISTS `ads` (
   `idads` INTEGER NOT NULL AUTO_INCREMENT,
   `model` VARCHAR(191) NOT NULL,

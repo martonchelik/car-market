@@ -4,7 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
-    "build": "SKIP_LINT=1 next build",
+    "build": "next build",
+    "db:migrate": "npx prisma migrate deploy && npx prisma generate",
+    "db:update": "npx prisma db push && npx prisma generate",
+    "db:seed": "npx prisma db seed",
+    "db:fix-password": "node scripts/fix-password-field.js",
     "start": "next start",
     "lint": "next lint"
   },

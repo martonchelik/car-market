@@ -28,22 +28,34 @@ export default function SignInForm() {
     setError(null);
 
     try {
+      console.log('Попытка входа для пользователя:', formData.email);
       const result = await signIn('credentials', {
         redirect: false,
         email: formData.email,
         password: formData.password,
       });
 
+      console.log('Результат входа:', { error: result?.error });
+
       if (result?.error) {
-        setError('Неверный email или пароль. Пожалуйста, попробуйте снова.');
+        // Обрабатываем различные ошибки от NextAuth
+        if (result.error.includes('CredentialsSignin')) {
+          setError('Неверный email или пароль. Пожалуйста, попробуйте снова.');
+        } else if (result.error.includes('blocked')) {
+          setError('Ваш аккаунт заблокирован. Пожалуйста, обратитесь в поддержку.');
+        } else {
+          setError(`Ошибка при входе: ${result.error}`);
+        }
         setIsLoading(false);
         return;
       }
 
+      console.log('Вход успешен, перенаправление на профиль');
       router.push('/profile');
       router.refresh();
-    } catch (err) {
-      setError('Произошла ошибка при входе');
+    } catch (err: any) {
+      console.error('Ошибка при входе:', err);
+      setError(`Произошла ошибка при входе: ${err.message || 'Пожалуйста, попробуйте позже'}`);
       setIsLoading(false);
     }
   };
@@ -52,8 +64,9 @@ export default function SignInForm() {
     setIsLoading(true);
     try {
       await signIn('google', { callbackUrl: '/profile' });
-    } catch (err) {
-      setError('Ошибка входа через Google');
+    } catch (err: any) {
+      console.error('Ошибка входа через Google:', err);
+      setError(`Ошибка входа через Google: ${err.message || 'Пожалуйста, попробуйте позже'}`);
       setIsLoading(false);
     }
   };

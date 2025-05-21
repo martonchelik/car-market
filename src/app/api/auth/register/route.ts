@@ -36,18 +36,43 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('Начинаем создание пользователя');
-    // Создание пользователя
-    const user = await createUser({
-      name: body.name,
-      email: body.email,
-      phone: body.phone,
-      password: body.password
-    });
+    try {
+      // Создание пользователя
+      const user = await createUser({
+        name: body.name,
+        email: body.email,
+        phone: body.phone,
+        password: body.password
+      });
 
-    console.log('Пользователь успешно зарегистрирован:', user.email);
-    return NextResponse.json({ success: true, user }, { status: 201 });
+      console.log('Пользователь успешно зарегистрирован:', user.email);
+      return NextResponse.json({ success: true, user }, { status: 201 });
+    } catch (createError: any) {
+      console.error('Ошибка при вызове createUser:', createError.message);
+
+      // Если ошибка уже содержит конкретное сообщение, используем его
+      if (createError.message && createError.message.includes('уже существует')) {
+        return NextResponse.json(
+          { error: createError.message },
+          { status: 409 }
+        );
+      }
+
+      if (createError.message && createError.message.includes('базе данных')) {
+        return NextResponse.json(
+          { error: createError.message },
+          { status: 503 }
+        );
+      }
+
+      // Детализируем ошибку регистрации для отладки
+      return NextResponse.json(
+        { error: `Ошибка при регистрации: ${createError.message}` },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
-    console.error('Ошибка при регистрации:', error);
+    console.error('Общая ошибка при регистрации:', error);
 
     // Логирование деталей ошибки
     if (error.code) {
@@ -57,33 +82,9 @@ export async function POST(req: NextRequest) {
       console.error('Метаданные ошибки:', error.meta);
     }
 
-    // Обработка известных ошибок
-    if (error.message === 'Пользователь с таким email уже существует') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 409 }
-      );
-    }
-
-    // Ошибки подключения к базе данных
-    if (error.code === 'P1001' || error.code === 'P1000') {
-      console.error('Проблема с подключением к базе данных');
-      return NextResponse.json(
-        { error: 'Сервис временно недоступен. Пожалуйста, попробуйте позже.' },
-        { status: 503 }
-      );
-    }
-
-    // Ошибки валидации данных Prisma
-    if (error.code === 'P2000' || error.code === 'P2001' || error.code === 'P2002') {
-      return NextResponse.json(
-        { error: 'Некорректные данные для регистрации' },
-        { status: 400 }
-      );
-    }
-
+    // Возвращаем пользователю информативное сообщение
     return NextResponse.json(
-      { error: 'Ошибка при регистрации пользователя' },
+      { error: `Произошла ошибка при регистрации: ${error.message}` },
       { status: 500 }
     );
   }

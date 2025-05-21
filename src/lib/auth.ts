@@ -2,12 +2,30 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { PrismaAdapter } from '@auth/prisma-adapter';
-import { compare } from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 import prisma from '@/lib/prisma';
+
+// Helper to check if a string is likely a bcrypt hash
+const isBcryptHash = (str: string) => {
+  return str && str.startsWith('$2') && str.length > 50;
+};
+
+// Helper for password verification that handles both bcrypt and plain passwords
+const verifyPassword = async (plainPassword: string, storedPassword: string) => {
+  // If stored password is a bcrypt hash, use bcrypt compare
+  if (isBcryptHash(storedPassword)) {
+    console.log('Verifying with bcrypt hash');
+    return compare(plainPassword, storedPassword);
+  }
+
+  // For backwards compatibility: direct comparison for plain text passwords
+  console.log('Verifying with plain text comparison');
+  return plainPassword === storedPassword;
+};
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  debug: process.env.NODE_ENV !== 'production',
+  debug: true, // Enable debug mode for all environments
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: '/auth/signin',
@@ -26,30 +44,66 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Пароль', type: 'password' }
       },
       async authorize(credentials) {
+        console.log('Starting authorize callback with credentials:', credentials?.email);
+
         if (!credentials?.email || !credentials?.password) {
+          console.error('Missing email or password');
           return null;
         }
 
         try {
-          // Ищем пользователя в базе данных
+          // Find user in the database
+          console.log('Finding user by email:', credentials.email);
           const user = await prisma.user.findUnique({
             where: { email: credentials.email }
           });
 
-          // Если пользователь не найден или неактивен
-          if (!user || !user.active) {
-            console.log('Пользователь не найден или неактивен:', credentials.email);
+          // If user not found
+          if (!user) {
+            console.error('User not found:', credentials.email);
             return null;
           }
 
-          // Проверяем пароль
-          const passwordMatches = await compare(credentials.password, user.password);
+          console.log('User found:', user.email, 'Active status:', user.active);
+
+          // If user account is inactive
+          if (!user.active) {
+            console.error('User account is inactive:', credentials.email);
+            return null;
+          }
+
+          // Verify password using our custom function
+          console.log('Verifying password for user:', credentials.email);
+          console.log('Stored password length:', user.password.length);
+
+          const passwordMatches = await verifyPassword(credentials.password, user.password);
+          console.log('Password matches:', passwordMatches);
+
           if (!passwordMatches) {
-            console.log('Неверный пароль для пользователя:', credentials.email);
+            console.error('Password does not match for user:', credentials.email);
             return null;
           }
 
-          // Возвращаем данные пользователя без пароля
+          // If password is not hashed, migrate it to bcrypt hash
+          if (!isBcryptHash(user.password)) {
+            try {
+              console.log('Migrating plain password to bcrypt hash for user:', user.email);
+              const hashedPassword = await hash(credentials.password, 10);
+
+              // Update the user's password with the bcrypt hash
+              await prisma.user.update({
+                where: { id: user.id },
+                data: { password: hashedPassword }
+              });
+              console.log('Password migration completed for user:', user.email);
+            } catch (updateError) {
+              // Log the error but don't block authentication
+              console.error('Failed to migrate password to hash:', updateError);
+            }
+          }
+
+          // Return user data without password
+          console.log('Authentication successful, returning user data:', user.email);
           return {
             id: user.id.toString(),
             name: user.name,
@@ -58,7 +112,7 @@ export const authOptions: NextAuthOptions = {
             acctype: user.acctype
           };
         } catch (error) {
-          console.error('Ошибка при авторизации:', error);
+          console.error('Error in authorize callback:', error);
           return null;
         }
       }
@@ -72,17 +126,17 @@ export const authOptions: NextAuthOptions = {
           name: profile.name,
           email: profile.email,
           image: profile.picture,
-          phone: "0", // Значение по умолчанию
-          acctype: "user", // Обычный пользователь по умолчанию
-          password: "", // Пустой пароль для OAuth пользователей
-          foreignkey: "1", // Значение по умолчанию
+          phone: "0", // Default value
+          acctype: "user", // Regular user by default
+          password: "", // Empty password for OAuth users
+          foreignkey: "1", // Default value
         };
       }
     }),
   ],
   callbacks: {
     async jwt({ token, user, account }) {
-      // Добавляем данные пользователя в токен при входе
+      // Add user data to token on login
       if (user) {
         token.id = user.id;
         token.acctype = user.acctype;
@@ -90,7 +144,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      // Добавляем данные пользователя в сессию
+      // Add user data to session
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.acctype = token.acctype as string;

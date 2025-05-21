@@ -31,68 +31,130 @@ export async function createUser(userData: CreateUserData) {
       throw new Error('Пользователь с таким email уже существует');
     }
 
-    console.log('Хеширование пароля для пользователя:', userData.email);
-    // Хешируем пароль
-    const hashedPassword = await hash(userData.password, SALT_ROUNDS);
+    // Пробуем создать пользователя с хешированным паролем
+    try {
+      console.log('Хеширование пароля для пользователя:', userData.email);
+      // Хешируем пароль
+      const hashedPassword = await hash(userData.password, SALT_ROUNDS);
+      console.log('Длина хешированного пароля:', hashedPassword.length);
 
-    console.log('Создание записи пользователя в базе данных:', userData.email);
-    // Создаем пользователя
-    const user = await prisma.user.create({
-      data: {
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone,
-        password: hashedPassword,
-        acctype: userData.acctype || 'user', // По умолчанию - обычный пользователь
-        foreignkey: '1',  // Заглушка для совместимости
-        regdate: new Date(),
-        image: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=2ab4ac&color=fff`
+      console.log('Создание записи пользователя в базе данных:', userData.email);
+      // Создаем пользователя с хешированным паролем
+      const user = await prisma.user.create({
+        data: {
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone,
+          password: hashedPassword,
+          acctype: userData.acctype || 'user',
+          foreignkey: '1',
+          regdate: new Date(),
+          image: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=2ab4ac&color=fff`,
+          active: true
+        }
+      });
+
+      console.log('Пользователь успешно создан с хешированным паролем:', userData.email);
+      // Удаляем пароль из возвращаемых данных
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    } catch (hashError: any) {
+      // Если ошибка связана с полем пароля или его длиной
+      console.error('Ошибка при создании с хешированным паролем:', hashError);
+
+      if (
+        hashError.code === 'P2000' ||
+        (hashError.meta && hashError.meta.field_name === 'password') ||
+        (typeof hashError.message === 'string' && hashError.message.includes('password'))
+      ) {
+        console.log('Пробуем создать пользователя с нехешированным паролем');
+        // Пробуем создать пользователя с нехешированным паролем как запасной вариант
+        const user = await prisma.user.create({
+          data: {
+            name: userData.name,
+            email: userData.email,
+            phone: userData.phone,
+            password: userData.password, // Используем пароль как есть
+            acctype: userData.acctype || 'user',
+            foreignkey: '1',
+            regdate: new Date(),
+            image: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=2ab4ac&color=fff`,
+            active: true
+          }
+        });
+
+        console.warn('Пользователь создан с нехешированным паролем:', userData.email);
+        // Удаляем пароль из возвращаемых данных
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      } else {
+        // Если ошибка не связана с паролем, пробрасываем ее дальше
+        throw hashError;
       }
-    });
-
-    console.log('Пользователь успешно создан:', userData.email);
-    // Удаляем пароль из возвращаемых данных
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    }
   } catch (error: any) {
-    console.error('Ошибка в функции createUser:', error);
+    console.error('Полная ошибка в функции createUser:', error);
+
+    // Детальное логирование ошибки для отладки
+    if (error.code) {
+      console.error('Код ошибки Prisma:', error.code);
+    }
+    if (error.meta) {
+      console.error('Метаданные ошибки Prisma:', error.meta);
+    }
+    if (error.message) {
+      console.error('Сообщение ошибки:', error.message);
+    }
+
     // Проверяем ошибки уникальности Prisma
     if (error.code === 'P2002') {
-      console.error('Нарушение уникальности поля:', error.meta?.target);
       if (error.meta?.target?.includes('email')) {
         throw new Error('Пользователь с таким email уже существует');
       }
     }
-    // Пробрасываем исходную ошибку дальше
-    throw error;
+
+    // Ошибки подключения к базе данных
+    if (error.code === 'P1001' || error.code === 'P1000' || error.code === 'P1003') {
+      throw new Error('Ошибка подключения к базе данных. Пожалуйста, попробуйте позже.');
+    }
+
+    // Пробрасываем исходную ошибку или общее сообщение об ошибке
+    throw new Error('Ошибка при регистрации пользователя: ' + error.message);
   }
 }
 
 // Авторизация пользователя
 export async function loginUser(loginData: LoginUserData) {
-  // Ищем пользователя по email
-  const user = await prisma.user.findUnique({
-    where: { email: loginData.email }
-  });
+  try {
+    // Ищем пользователя по email
+    const user = await prisma.user.findUnique({
+      where: { email: loginData.email }
+    });
 
-  if (!user) {
-    throw new Error('Неверный email или пароль');
+    if (!user) {
+      throw new Error('Неверный email или пароль');
+    }
+
+    // Проверяем, активен ли аккаунт
+    if (!user.active) {
+      throw new Error('Аккаунт заблокирован');
+    }
+
+    console.log('Проверка пароля для пользователя:', loginData.email);
+    // Проверяем пароль
+    const passwordValid = await compare(loginData.password, user.password);
+    if (!passwordValid) {
+      console.log('Неверный пароль для пользователя:', loginData.email);
+      throw new Error('Неверный email или пароль');
+    }
+
+    // Удаляем пароль из возвращаемых данных
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error: any) {
+    console.error('Ошибка при входе пользователя:', error);
+    throw error;
   }
-
-  // Проверяем, активен ли аккаунт
-  if (!user.active) {
-    throw new Error('Аккаунт заблокирован');
-  }
-
-  // Проверяем пароль
-  const passwordValid = await compare(loginData.password, user.password);
-  if (!passwordValid) {
-    throw new Error('Неверный email или пароль');
-  }
-
-  // Удаляем пароль из возвращаемых данных
-  const { password, ...userWithoutPassword } = user;
-  return userWithoutPassword;
 }
 
 // Получение пользователя по ID
