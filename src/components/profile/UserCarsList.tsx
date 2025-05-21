@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
@@ -16,7 +16,7 @@ interface CarImage {
 }
 
 interface Car {
-  id: number;
+  idads: number;
   modelname?: string;
   carbrand?: string;
   prodyear: number;
@@ -37,6 +37,7 @@ interface Car {
 interface UserCarsListProps {
   cars: Car[];
 }
+
 
 export function UserCarsList({ cars }: UserCarsListProps) {
   const [userCars, setUserCars] = useState<Car[]>(cars);
@@ -61,7 +62,7 @@ export function UserCarsList({ cars }: UserCarsListProps) {
       // Обновляем состояние списка объявлений
       setUserCars(prevCars =>
         prevCars.map(car =>
-          car.id === carId ? { ...car, active } : car
+          car.idads === carId ? { ...car, active } : car
         )
       );
 
@@ -91,7 +92,7 @@ export function UserCarsList({ cars }: UserCarsListProps) {
       }
 
       // Удаляем объявление из списка
-      setUserCars(prevCars => prevCars.filter(car => car.id !== carId));
+      setUserCars(prevCars => prevCars.filter(car => car.idads !== carId));
 
       toast.success('Объявление удалено');
     } catch (error) {
@@ -101,7 +102,6 @@ export function UserCarsList({ cars }: UserCarsListProps) {
       setIsLoading(null);
     }
   };
-
   if (userCars.length === 0) {
     return (
       <div className="text-center py-8">
@@ -116,23 +116,44 @@ export function UserCarsList({ cars }: UserCarsListProps) {
   return (
     <div className="space-y-4">
       {userCars.map(car => (
-        <div key={car.id} className={`bg-white rounded-lg border ${!car.active ? 'border-gray-200 bg-gray-50' : 'border-gray-200'} overflow-hidden`}>
+        <div key={car.idads} className={`bg-white rounded-lg border ${!car.active ? 'border-gray-200 bg-gray-50' : 'border-gray-200'} overflow-hidden`}>
           <div className="flex flex-col md:flex-row">
             {/* Изображение автомобиля */}
             <div className="w-full md:w-1/4 relative">
               <div className="aspect-[4/3] relative">
-                <Image
-                  src={car.images?.[0]?.url || '/images/car-placeholder.svg'}
-                  alt={`${car.carbrand} ${car.modelname}`}
-                  fill
-                  className="object-cover"
-                />
+                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                  <svg
+                      width="120"
+                      height="80"
+                      viewBox="0 0 120 80"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="text-gray-400"
+                  >
+                    <path
+                        d="M105 50h10v10h-10zM5 50h10v10H5z"
+                        fill="currentColor"
+                    />
+                    <path
+                        d="M100 30H20l-15 20h110L100 30z"
+                        fill="currentColor"
+                    />
+                    <path
+                        d="M100 60H20v-10h80v10zM35 40H25l5-10h10l-5 10zM95 40H85l-5-10h10l5 10z"
+                        fill="currentColor"
+                    />
+                    <path
+                        d="M75 55H45v-5h30v5z"
+                        fill="white"
+                    />
+                  </svg>
+                </div>
               </div>
 
               {!car.active && (
-                <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
-                  <span className="text-white font-medium px-2 py-1 rounded">Деактивировано</span>
-                </div>
+                  <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
+                    <span className="text-white font-medium px-2 py-1 rounded">Деактивировано</span>
+                  </div>
               )}
             </div>
 
@@ -166,8 +187,8 @@ export function UserCarsList({ cars }: UserCarsListProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toggleCarStatus(car.id, !car.active)}
-                  disabled={isLoading === car.id}
+                  onClick={() => toggleCarStatus(car.idads, !car.active)}
+                  disabled={isLoading === car.idads}
                 >
                   {car.active ? (
                     <><EyeOff size={16} className="mr-1" /> Деактивировать</>
@@ -181,7 +202,7 @@ export function UserCarsList({ cars }: UserCarsListProps) {
                   size="sm"
                   asChild
                 >
-                  <Link href={`/profile/edit-listing/${car.id}`}>
+                  <Link href={`/profile/edit-listing/${car.idads}`}>
                     <Pencil size={16} className="mr-1" /> Редактировать
                   </Link>
                 </Button>
@@ -190,8 +211,8 @@ export function UserCarsList({ cars }: UserCarsListProps) {
                   variant="outline"
                   size="sm"
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => deleteCar(car.id)}
-                  disabled={isLoading === car.id}
+                  onClick={() => deleteCar(car.idads)}
+                  disabled={isLoading === car.idads}
                 >
                   <Trash2 size={16} className="mr-1" /> Удалить
                 </Button>

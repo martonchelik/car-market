@@ -183,16 +183,21 @@ export async function getUserById(id: number) {
 
 // Получение автомобилей пользователя
 export async function getUserCars(userId: number) {
-  return prisma.car.findMany({
-    where: { owner: userId },
-    orderBy: { date_added: 'desc' },
-    include: {
-      images: {
-        where: { main: true },
-        take: 1
-      }
-    }
-  });
+  return prisma.$queryRaw`
+  SELECT a.idads, m.modelname, cb.carbrand, a.prodyear, a.engvol, a.price, a.milage,
+         a.active, a.new, a.owner, et.enginetype, bt.bodytype,
+         gb.gb, tm.drivetype, c.color, a.date_added
+  FROM ads a
+  JOIN models m ON a.model = m.idmodels
+  JOIN carbrands cb ON m.modelbrand = cb.idcb
+  JOIN enginetypes et ON a.engtype = et.idet
+  JOIN bodytypes bt ON a.body = bt.idbt
+  JOIN gearboxes gb ON a.gearbox = gb.idgb
+  JOIN transmissions tm ON a.transmission = tm.idtm
+  JOIN colors c ON a.color = c.idc
+  WHERE a.owner = ${userId}
+  ORDER BY a.date_added DESC
+`;
 }
 
 // Получение избранных объявлений пользователя

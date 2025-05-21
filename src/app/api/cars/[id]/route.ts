@@ -43,8 +43,8 @@ export async function DELETE(request: Request, { params }: Params) {
   try {
     // В реальном приложении здесь должна быть проверка авторизации
     // например, через NextAuth.js или другой метод аутентификации
-
     const id = parseInt(params.id);
+    console.log(id)
 
     if (isNaN(id)) {
       return NextResponse.json(

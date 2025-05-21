@@ -37,12 +37,6 @@ export default function SignInPage() {
             <SignInForm />
 
             <div className="mt-6 text-center text-sm text-gray">
-              <p>
-                Нет аккаунта?{' '}
-                <Link href="/auth/signup" className="text-primary hover:underline">
-                  Зарегистрироваться
-                </Link>
-              </p>
               <p className="mt-2">
                 <Link href="/" className="text-primary hover:underline">
                   Вернуться на главную
